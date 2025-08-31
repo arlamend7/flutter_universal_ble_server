@@ -1,0 +1,15 @@
+name: universal_ble_server_example
+description: Demo app for universal_ble_server
+publish_to: 'none'
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  universal_ble_server:
+    path: ../
+
+flutter:
+  uses-material-design: true
