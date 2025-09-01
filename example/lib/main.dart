@@ -13,7 +13,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final server = UniversalBleServer(key: List<int>.filled(32, 1));
+  final server = UniversalBleServer();
   String log = 'Server not started';
 
   @override
@@ -32,7 +32,7 @@ class _MyAppState extends State<MyApp> {
       characteristics: [
         BleCharacteristic(
             uuid: '0000abce-0000-1000-8000-00805f9b34fb',
-            properties: [BleProperty.write]),
+            properties: [BleProperty.write, BleProperty.notify, BleProperty.write]),
         BleCharacteristic(
             uuid: '0000abcf-0000-1000-8000-00805f9b34fb',
             properties: [BleProperty.notify]),

@@ -4,17 +4,15 @@ version: 0.0.1
 homepage:
 
 environment:
-  sdk: ^3.8.1
-  flutter: '>=3.3.0'
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: '>=3.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
-  web: ^1.0.0
-  plugin_platform_interface: ^2.0.2
-  encrypt: ^5.0.1
+  plugin_platform_interface: '>=2.0.0'
 
 dev_dependencies:
   flutter_test:
