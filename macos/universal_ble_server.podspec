@@ -3,11 +3,11 @@
 # Run `pod lib lint flutter_universal_ble_server.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
-  s.name             = 'flutter_universal_ble_server'
+  s.name             = 'universal_ble_server'
   s.version          = '0.0.1'
-  s.summary          = 'A new Flutter plugin project.'
+  s.summary          = 'Universal BLE peripheral plugin.'
   s.description      = <<-DESC
-A new Flutter plugin project.
+Cross-platform BLE peripheral plugin.
                        DESC
   s.homepage         = 'http://example.com'
   s.license          = { :file => '../LICENSE' }

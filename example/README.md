@@ -1,6 +1,6 @@
-# flutter_universal_ble_server_example
+# universal_ble_server_example
 
-Demonstrates how to use the flutter_universal_ble_server plugin.
+Demonstrates how to use the universal_ble_server plugin.
 
 ## Getting Started
 
