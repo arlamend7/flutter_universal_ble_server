@@ -1,7 +1,12 @@
 name: universal_ble_server
 description: "Cross-platform BLE peripheral plugin with AES encryption"
 version: 0.0.1
-homepage: https://example.com
+homepage: https://github.com/arlamend7/flutter_universal_ble_server
+repository: https://github.com/arlamend7/flutter_universal_ble_server
+issue_tracker: https://github.com/arlamend7/flutter_universal_ble_server/issues
+documentation: https://arlamend7.github.io/flutter_universal_ble_server
+license: MIT
+example: example/lib/main.dart
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
