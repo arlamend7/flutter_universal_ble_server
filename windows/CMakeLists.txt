@@ -10,4 +10,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 target_include_directories(${PROJECT_NAME} INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(${PROJECT_NAME} PRIVATE flutter flutter_wrapper_plugin)
+target_link_libraries(${PROJECT_NAME} PRIVATE flutter flutter_wrapper_plugin WindowsApp)
