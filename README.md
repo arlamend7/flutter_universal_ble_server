@@ -1,6 +1,6 @@
-# flutter_universal_ble_server
+# universal_ble_server
 
-A new Flutter plugin project.
+Cross-platform BLE peripheral plugin with AES-encrypted messaging for Android, iOS, macOS, Windows and Web (stub).
 
 ## Getting Started
 

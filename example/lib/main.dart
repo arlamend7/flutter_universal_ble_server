@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-
-import 'package:flutter/services.dart';
-import 'package:flutter_universal_ble_server/flutter_universal_ble_server.dart';
+import 'package:universal_ble_server/universal_ble_server.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,46 +13,56 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-  final _flutterUniversalBleServerPlugin = FlutterUniversalBleServer();
+  final server = UniversalBleServer(key: List<int>.filled(32, 1));
+  String log = 'Server not started';
 
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    server.onWrite.listen((event) {
+      setState(() {
+        log = 'Received: ' + String.fromCharCodes(event.value);
+      });
+    });
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // We also handle the message potentially returning null.
-    try {
-      platformVersion =
-          await _flutterUniversalBleServerPlugin.getPlatformVersion() ?? 'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
+  Future<void> _start() async {
+    await server.startServer(
+      serviceUuid: '0000abcd-0000-1000-8000-00805f9b34fb',
+      characteristics: [
+        BleCharacteristic(
+            uuid: '0000abce-0000-1000-8000-00805f9b34fb',
+            properties: [BleProperty.write]),
+        BleCharacteristic(
+            uuid: '0000abcf-0000-1000-8000-00805f9b34fb',
+            properties: [BleProperty.notify]),
+      ],
+    );
     setState(() {
-      _platformVersion = platformVersion;
+      log = 'Server started';
     });
+  }
+
+  Future<void> _send() async {
+    await server.notify(
+        '0000abcf-0000-1000-8000-00805f9b34fb', 'Hello Central'.codeUnits);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
-        body: Center(
-          child: Text('Running on: $_platformVersion\n'),
+        appBar: AppBar(title: const Text('Universal BLE Server Example')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Text(log),
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: _start, child: const Text('Start Server')),
+              ElevatedButton(onPressed: _send, child: const Text('Send Message')),
+            ],
+          ),
         ),
       ),
     );

@@ -1,5 +1,5 @@
-name: flutter_universal_ble_server
-description: "A new Flutter plugin project."
+name: universal_ble_server
+description: "Cross-platform BLE peripheral plugin with encryption."
 version: 0.0.1
 homepage:
 
@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
   web: ^1.0.0
   plugin_platform_interface: ^2.0.2
+  encrypt: ^5.0.1
 
 dev_dependencies:
   flutter_test:
@@ -38,19 +39,17 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.example.flutter_universal_ble_server
-        pluginClass: FlutterUniversalBleServerPlugin
+        package: com.example.universal_ble_server
+        pluginClass: UniversalBleServerPlugin
       ios:
-        pluginClass: FlutterUniversalBleServerPlugin
-      linux:
-        pluginClass: FlutterUniversalBleServerPlugin
+        pluginClass: UniversalBleServerPlugin
       macos:
-        pluginClass: FlutterUniversalBleServerPlugin
+        pluginClass: UniversalBleServerPlugin
       windows:
-        pluginClass: FlutterUniversalBleServerPluginCApi
+        pluginClass: UniversalBleServerPluginCApi
       web:
-        pluginClass: FlutterUniversalBleServerWeb
-        fileName: flutter_universal_ble_server_web.dart
+        pluginClass: UniversalBleServerWeb
+        fileName: universal_ble_server_web.dart
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:
