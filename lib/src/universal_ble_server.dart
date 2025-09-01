@@ -7,9 +7,12 @@ import 'models.dart';
 class UniversalBleServer {
   UniversalBleServer();
 
-  final MethodChannel _channel = const MethodChannel('universal_ble_server/methods');
-  final EventChannel _writeChannel = const EventChannel('universal_ble_server/on_write');
-  final EventChannel _readChannel = const EventChannel('universal_ble_server/on_read');
+  final MethodChannel _channel =
+      const MethodChannel('universal_ble_server/methods');
+  final EventChannel _writeChannel =
+      const EventChannel('universal_ble_server/on_write');
+  final EventChannel _readChannel =
+      const EventChannel('universal_ble_server/on_read');
 
   Stream<BleWriteEvent>? _onWrite;
   Stream<BleReadEvent>? _onRead;
@@ -44,14 +47,16 @@ class UniversalBleServer {
   }
 
   /// Stream of decrypted write requests from connected centrals.
-  Stream<BleWriteEvent> get onWrite => _onWrite ??= _writeChannel.receiveBroadcastStream().map((event) {
+  Stream<BleWriteEvent> get onWrite =>
+      _onWrite ??= _writeChannel.receiveBroadcastStream().map((event) {
         final map = Map<dynamic, dynamic>.from(event as Map);
         final uuid = map['characteristicUuid'] as String;
         return BleWriteEvent(characteristicUuid: uuid, value: map['value']);
       });
 
   /// Stream of read requests from connected centrals.
-  Stream<BleReadEvent> get onRead => _onRead ??= _readChannel.receiveBroadcastStream().map((event) {
+  Stream<BleReadEvent> get onRead =>
+      _onRead ??= _readChannel.receiveBroadcastStream().map((event) {
         final map = Map<dynamic, dynamic>.from(event as Map);
         final uuid = map['characteristicUuid'] as String;
         return BleReadEvent(characteristicUuid: uuid);

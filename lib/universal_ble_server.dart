@@ -1,4 +1,3 @@
-
 library universal_ble_server;
 
 export 'src/models.dart';

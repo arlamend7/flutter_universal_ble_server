@@ -23,7 +23,9 @@ class _MyAppState extends State<MyApp> {
     _server = UniversalBleServer();
     _server.onWrite.listen((e) {
       setState(() {
-        _log.add('Write ${e.characteristicUuid}: ' + String.fromCharCodes(e.value));
+        _log.add(
+          'Write ${e.characteristicUuid}: ' + String.fromCharCodes(e.value),
+        );
       });
     });
     _server.onRead.listen((e) {
@@ -63,15 +65,16 @@ class _MyAppState extends State<MyApp> {
             ElevatedButton(
               onPressed: () {
                 final text = _controller.text;
-                _server.notify('00002A57-0000-1000-8000-00805F9B34FB', text.codeUnits);
+                _server.notify(
+                  '00002A57-0000-1000-8000-00805F9B34FB',
+                  text.codeUnits,
+                );
                 _controller.clear();
               },
               child: const Text('Notify'),
             ),
             Expanded(
-              child: ListView(
-                children: _log.map((e) => Text(e)).toList(),
-              ),
+              child: ListView(children: _log.map((e) => Text(e)).toList()),
             ),
           ],
         ),
