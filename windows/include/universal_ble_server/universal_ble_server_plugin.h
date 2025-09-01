@@ -25,4 +25,18 @@ class UniversalBleServerPlugin : public flutter::Plugin {
 
 }  // namespace universal_ble_server
 
+#if defined(_WIN32)
+#ifdef FLUTTER_PLUGIN_IMPL
+#define UNIVERSAL_BLE_SERVER_PLUGIN_EXPORT __declspec(dllexport)
+#else
+#define UNIVERSAL_BLE_SERVER_PLUGIN_EXPORT __declspec(dllimport)
+#endif
+#else
+#define UNIVERSAL_BLE_SERVER_PLUGIN_EXPORT
+#endif
+
+extern "C" UNIVERSAL_BLE_SERVER_PLUGIN_EXPORT void
+UniversalBleServerPluginRegisterWithRegistrar(
+    flutter::PluginRegistrarWindows* registrar);
+
 #endif  // FLUTTER_PLUGIN_UNIVERSAL_BLE_SERVER_PLUGIN_H_

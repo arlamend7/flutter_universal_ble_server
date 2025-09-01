@@ -1,4 +1,4 @@
-#include "universal_ble_server_plugin.h"
+#include "include/universal_ble_server/universal_ble_server_plugin.h"
 
 #include <flutter/event_channel.h>
 #include <flutter/standard_method_codec.h>
@@ -126,3 +126,9 @@ void UniversalBleServerPlugin::HandleMethodCall(
 }
 
 }  // namespace universal_ble_server
+
+extern "C" void UniversalBleServerPluginRegisterWithRegistrar(
+    flutter::PluginRegistrarWindows* registrar) {
+  universal_ble_server::UniversalBleServerPlugin::RegisterWithRegistrar(
+      registrar);
+}
