@@ -1,16 +1,15 @@
-# Universal BLE Server
+# flutter_universal_ble_server
 
-A Flutter plugin that exposes a cross-platform Bluetooth Low Energy (BLE) GATT
-server with AES encrypted communication. The plugin supports Android, iOS,
-macOS, Windows and provides a stub implementation for the web where peripheral
-mode is not available.
+A new Flutter plugin project.
 
-## Features
+## Getting Started
 
-* Start and stop a GATT server with a dynamic service and characteristics.
-* Receive read and write requests via streams.
-* Send notifications to connected centrals.
-* All characteristic values are encrypted using AES before transport.
+This project is a starting point for a Flutter
+[plug-in package](https://flutter.dev/to/develop-plugins),
+a specialized package that includes platform-specific implementation code for
+Android and/or iOS.
 
-See the [example](example/lib/main.dart) for a simple chat-style application
-that sends encrypted messages between devices.
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+
