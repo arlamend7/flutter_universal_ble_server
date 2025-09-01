@@ -126,3 +126,9 @@ void UniversalBleServerPlugin::HandleMethodCall(
 }
 
 }  // namespace universal_ble_server
+
+extern "C" void UniversalBleServerPluginRegisterWithRegistrar(
+    flutter::PluginRegistrarWindows* registrar) {
+  universal_ble_server::UniversalBleServerPlugin::RegisterWithRegistrar(
+      registrar);
+}
