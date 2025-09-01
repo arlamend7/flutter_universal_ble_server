@@ -1,9 +1,13 @@
 #include "universal_ble_server_plugin.h"
 
-#include <windows.devices.bluetooth.genericattributeprofile.h>
 #include <flutter/event_channel.h>
 #include <flutter/standard_method_codec.h>
+#include <map>
+#include <winrt/Windows.Devices.Bluetooth.h>
+#include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
+#include <winrt/Windows.Foundation.h>
 
+using namespace winrt;
 using namespace winrt::Windows::Devices::Bluetooth::GenericAttributeProfile;
 using namespace flutter;
 
