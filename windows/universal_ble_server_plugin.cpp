@@ -2,51 +2,21 @@
 
 #include <flutter/event_channel.h>
 #include <flutter/standard_method_codec.h>
+#include <flutter/stream_handler_functions.h>
 #include <map>
 #include <winrt/Windows.Devices.Bluetooth.h>
 #include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
 #include <winrt/Windows.Foundation.h>
 
 using namespace winrt;
+using namespace winrt::Windows::Devices::Bluetooth;
 using namespace winrt::Windows::Devices::Bluetooth::GenericAttributeProfile;
 using namespace flutter;
 
 namespace universal_ble_server {
 
-class WriteStreamHandler : public StreamHandler<EncodableValue> {
- public:
-  std::unique_ptr<StreamHandlerError<EncodableValue>> OnListen(
-      const EncodableValue* arguments,
-      std::unique_ptr<EventSink<EncodableValue>>&& events) override {
-    sink_ = std::move(events);
-    return nullptr;
-  }
-  std::unique_ptr<StreamHandlerError<EncodableValue>> OnCancel(
-      const EncodableValue* arguments) override {
-    sink_ = nullptr;
-    return nullptr;
-  }
-  std::unique_ptr<EventSink<EncodableValue>> sink_;
-};
-
-class ReadStreamHandler : public StreamHandler<EncodableValue> {
- public:
-  std::unique_ptr<StreamHandlerError<EncodableValue>> OnListen(
-      const EncodableValue* arguments,
-      std::unique_ptr<EventSink<EncodableValue>>&& events) override {
-    sink_ = std::move(events);
-    return nullptr;
-  }
-  std::unique_ptr<StreamHandlerError<EncodableValue>> OnCancel(
-      const EncodableValue* arguments) override {
-    sink_ = nullptr;
-    return nullptr;
-  }
-  std::unique_ptr<EventSink<EncodableValue>> sink_;
-};
-
-std::unique_ptr<WriteStreamHandler> g_write_handler;
-std::unique_ptr<ReadStreamHandler> g_read_handler;
+std::unique_ptr<EventSink<EncodableValue>> g_write_sink;
+std::unique_ptr<EventSink<EncodableValue>> g_read_sink;
 GattServiceProvider g_service_provider{nullptr};
 std::map<std::string, GattLocalCharacteristic> g_characteristics;
 
@@ -66,14 +36,32 @@ void UniversalBleServerPlugin::RegisterWithRegistrar(flutter::PluginRegistrarWin
   auto writeChannel = std::make_unique<EventChannel<EncodableValue>>(
       registrar->messenger(), "universal_ble_server/on_write",
       &StandardMethodCodec::GetInstance());
-  g_write_handler = std::make_unique<WriteStreamHandler>();
-  writeChannel->SetStreamHandler(std::move(g_write_handler));
+  auto write_handler = std::make_unique<StreamHandlerFunctions<EncodableValue>>(
+      [](const EncodableValue* arguments,
+         std::unique_ptr<EventSink<EncodableValue>>&& events) {
+        g_write_sink = std::move(events);
+        return nullptr;
+      },
+      [](const EncodableValue* arguments) {
+        g_write_sink.reset();
+        return nullptr;
+      });
+  writeChannel->SetStreamHandler(std::move(write_handler));
 
   auto readChannel = std::make_unique<EventChannel<EncodableValue>>(
       registrar->messenger(), "universal_ble_server/on_read",
       &StandardMethodCodec::GetInstance());
-  g_read_handler = std::make_unique<ReadStreamHandler>();
-  readChannel->SetStreamHandler(std::move(g_read_handler));
+  auto read_handler = std::make_unique<StreamHandlerFunctions<EncodableValue>>(
+      [](const EncodableValue* arguments,
+         std::unique_ptr<EventSink<EncodableValue>>&& events) {
+        g_read_sink = std::move(events);
+        return nullptr;
+      },
+      [](const EncodableValue* arguments) {
+        g_read_sink.reset();
+        return nullptr;
+      });
+  readChannel->SetStreamHandler(std::move(read_handler));
 
   registrar->AddPlugin(std::move(plugin));
 }
@@ -90,7 +78,12 @@ void UniversalBleServerPlugin::HandleMethodCall(
     if (!args) { result->Error("bad_args"); return; }
     auto serviceUuid = std::get<std::string>(args->at(EncodableValue("serviceUuid")));
     auto serviceGuid = winrt::guid(serviceUuid);
-    g_service_provider = GattServiceProvider::CreateAsync(serviceGuid).get();
+    auto provider_result = GattServiceProvider::CreateAsync(serviceGuid).get();
+    if (provider_result.Error() != BluetoothError::Success) {
+      result->Error("gatt_error", "Failed to create GattServiceProvider");
+      return;
+    }
+    g_service_provider = provider_result.ServiceProvider();
     g_service_provider.StartAdvertising(GattServiceProviderAdvertisingParameters{});
     result->Success();
   } else if (call.method_name() == "stopServer") {
