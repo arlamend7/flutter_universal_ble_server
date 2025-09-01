@@ -39,4 +39,3 @@ extern "C" UNIVERSAL_BLE_SERVER_PLUGIN_EXPORT void
 UniversalBleServerPluginRegisterWithRegistrar(
     flutter::PluginRegistrarWindows* registrar);
 
-#endif  // FLUTTER_PLUGIN_UNIVERSAL_BLE_SERVER_PLUGIN_H_

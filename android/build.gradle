@@ -3,6 +3,7 @@ apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 33
+    namespace "com.example.universal_ble_server"
 
     defaultConfig {
         minSdkVersion 21
