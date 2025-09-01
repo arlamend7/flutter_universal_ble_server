@@ -20,7 +20,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _server = UniversalBleServer(aesKey: List<int>.filled(32, 1));
+    _server = UniversalBleServer();
     _server.onWrite.listen((e) {
       setState(() {
         _log.add('Write ${e.characteristicUuid}: ' + String.fromCharCodes(e.value));

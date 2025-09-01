@@ -4,17 +4,15 @@ version: 0.0.1
 homepage: https://example.com
 
 environment:
-  sdk: ^3.8.1
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  encrypt: ^5.0.1
 
 dev_dependencies:
-  test: ^1.25.2
-  flutter_lints: ^5.0.0
+  flutter_lints: ^2.0.0
 
 flutter:
   plugin:

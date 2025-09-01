@@ -1,9 +1,8 @@
-import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:universal_ble_server/universal_ble_server.dart';
 
 /// Web stub implementation. Peripheral mode is not supported on the web.
 class UniversalBleServerWeb {
-  static void registerWith(Registrar registrar) {
+  static void registerWith() {
     // Nothing to do. Intentionally left blank.
   }
 
