@@ -1,12 +1,12 @@
 #include "universal_ble_server_plugin.h"
 
 #include <flutter/event_channel.h>
-#include <flutter/standard_method_codec.h>
 #include <flutter/plugin_registrar_windows.h>
+#include <flutter/standard_method_codec.h>
 
 #include <map>
-#include <winrt/Windows.Devices.Bluetooth.h>
 #include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
+#include <winrt/Windows.Devices.Bluetooth.h>
 #include <winrt/Windows.Foundation.h>
 
 using namespace winrt;
@@ -24,31 +24,31 @@ std::map<std::string, GattLocalCharacteristic> g_characteristics;
 
 // ---- StreamHandler custom ----
 class SimpleStreamHandler : public StreamHandler<EncodableValue> {
- public:
-  SimpleStreamHandler(std::unique_ptr<EventSink<EncodableValue>>* sink)
+public:
+  SimpleStreamHandler(std::unique_ptr<EventSink<EncodableValue>> *sink)
       : sink_(sink) {}
 
- protected:
+protected:
   std::unique_ptr<StreamHandlerError<EncodableValue>> OnListenInternal(
-      const EncodableValue* arguments,
-      std::unique_ptr<EventSink<EncodableValue>>&& events) override {
+      const EncodableValue *arguments,
+      std::unique_ptr<EventSink<EncodableValue>> &&events) override {
     *sink_ = std::move(events);
     return nullptr;
   }
 
-  std::unique_ptr<StreamHandlerError<EncodableValue>> OnCancelInternal(
-      const EncodableValue* arguments) override {
+  std::unique_ptr<StreamHandlerError<EncodableValue>>
+  OnCancelInternal(const EncodableValue *arguments) override {
     sink_->reset();
     return nullptr;
   }
 
- private:
-  std::unique_ptr<EventSink<EncodableValue>>* sink_;
+private:
+  std::unique_ptr<EventSink<EncodableValue>> *sink_;
 };
 
 // ---- Registrar plugin ----
 void UniversalBleServerPlugin::RegisterWithRegistrar(
-    flutter::PluginRegistrarWindows* registrar) {
+    flutter::PluginRegistrarWindows *registrar) {
   auto plugin = std::make_unique<UniversalBleServerPlugin>();
 
   // Method channel
@@ -57,7 +57,7 @@ void UniversalBleServerPlugin::RegisterWithRegistrar(
       &StandardMethodCodec::GetInstance());
 
   channel->SetMethodCallHandler(
-      [plugin_pointer = plugin.get()](const auto& call, auto result) {
+      [plugin_pointer = plugin.get()](const auto &call, auto result) {
         plugin_pointer->HandleMethodCall(call, std::move(result));
       });
 
@@ -84,10 +84,10 @@ UniversalBleServerPlugin::~UniversalBleServerPlugin() {}
 
 // ---- Métodos ----
 void UniversalBleServerPlugin::HandleMethodCall(
-    const MethodCall<EncodableValue>& call,
+    const MethodCall<EncodableValue> &call,
     std::unique_ptr<MethodResult<EncodableValue>> result) {
   if (call.method_name() == "startServer") {
-    const auto* args = std::get_if<EncodableMap>(call.arguments());
+    const auto *args = std::get_if<EncodableMap>(call.arguments());
     if (!args) {
       result->Error("bad_args");
       return;
@@ -97,17 +97,24 @@ void UniversalBleServerPlugin::HandleMethodCall(
         std::get<std::string>(args->at(EncodableValue("serviceUuid")));
     auto serviceGuid = winrt::guid(serviceUuid);
 
-    auto provider_result = GattServiceProvider::CreateAsync(serviceGuid).get();
-    if (provider_result.Error() != BluetoothError::Success) {
-      result->Error("gatt_error", "Failed to create GattServiceProvider");
-      return;
-    }
+    auto op = GattServiceProvider::CreateAsync(serviceGuid);
+    op.Completed([result = std::move(result)](auto &&op, auto status) mutable {
+      if (status != AsyncStatus::Completed) {
+        result->Error("gatt_error", "Failed to create GattServiceProvider");
+        return;
+      }
+      auto provider_result = op.GetResults();
+      if (provider_result.Error() != BluetoothError::Success) {
+        result->Error("gatt_error", "Failed to create GattServiceProvider");
+        return;
+      }
 
-    g_service_provider = provider_result.ServiceProvider();
-    g_service_provider.StartAdvertising(
-        GattServiceProviderAdvertisingParameters{});
+      g_service_provider = provider_result.ServiceProvider();
+      g_service_provider.StartAdvertising(
+          GattServiceProviderAdvertisingParameters{});
 
-    result->Success();
+      result->Success();
+    });
 
   } else if (call.method_name() == "stopServer") {
     if (g_service_provider) {
@@ -125,4 +132,4 @@ void UniversalBleServerPlugin::HandleMethodCall(
   }
 }
 
-}  // namespace universal_ble_server
+} // namespace universal_ble_server
