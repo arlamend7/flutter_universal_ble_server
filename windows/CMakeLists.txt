@@ -94,6 +94,9 @@ add_custom_command(TARGET ${TEST_RUNNER} POST_BUILD
   "${FLUTTER_LIBRARY}" $<TARGET_FILE_DIR:${TEST_RUNNER}>
 )
 
+target_include_directories(universal_ble_server_plugin PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
 # Enable automatic test discovery.
 include(GoogleTest)
 gtest_discover_tests(${TEST_RUNNER})

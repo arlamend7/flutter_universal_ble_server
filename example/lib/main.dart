@@ -31,11 +31,9 @@ class _MyAppState extends State<MyApp> {
       serviceUuid: '0000abcd-0000-1000-8000-00805f9b34fb',
       characteristics: [
         BleCharacteristic(
-            uuid: '0000abce-0000-1000-8000-00805f9b34fb',
-            properties: [BleProperty.write, BleProperty.notify, BleProperty.write]),
-        BleCharacteristic(
-            uuid: '0000abcf-0000-1000-8000-00805f9b34fb',
-            properties: [BleProperty.notify]),
+          uuid: '0000abce-0000-1000-8000-00805f9b34fb',
+          properties: [BleProperty.read, BleProperty.notify, BleProperty.write],
+        ),
       ],
     );
     setState(() {
@@ -44,8 +42,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _send() async {
-    await server.notify(
-        '0000abcf-0000-1000-8000-00805f9b34fb', 'Hello Central'.codeUnits);
+    await server.notify('0000abcf-0000-1000-8000-00805f9b34fb', 'Hello Central'.codeUnits);
   }
 
   @override
