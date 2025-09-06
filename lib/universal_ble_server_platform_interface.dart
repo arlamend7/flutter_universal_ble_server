@@ -27,9 +27,12 @@ abstract class UniversalBleServerPlatform extends PlatformInterface {
   /// Stream of read events from connected centrals.
   Stream<BleReadEvent> get onRead;
 
+  /// Starts a BLE server with [serviceUuid] and [characteristics].
   Future<void> startServer({required String serviceUuid, required List<BleCharacteristic> characteristics});
 
+  /// Stops the running BLE server.
   Future<void> stopServer();
 
+  /// Sends a notification for a characteristic update.
   Future<void> notify(String characteristicUuid, List<int> value);
 }

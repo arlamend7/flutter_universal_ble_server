@@ -12,20 +12,23 @@ class MethodChannelUniversalBleServer extends UniversalBleServerPlatform {
   static const EventChannel _readChannel = EventChannel('universal_ble_server/onRead');
 
   @override
-  Stream<BleWriteEvent> get onWrite => _writeChannel
-      .receiveBroadcastStream()
-      .map((event) => BleWriteEvent.fromMap(Map<String, dynamic>.from(event as Map)));
+  Stream<BleWriteEvent> get onWrite => _writeChannel.receiveBroadcastStream().map(
+        (Object? event) => BleWriteEvent.fromMap((event as Map<Object?, Object?>).cast<String, Object?>()),
+      );
 
   @override
-  Stream<BleReadEvent> get onRead => _readChannel
-      .receiveBroadcastStream()
-      .map((event) => BleReadEvent.fromMap(Map<String, dynamic>.from(event as Map)));
+  Stream<BleReadEvent> get onRead => _readChannel.receiveBroadcastStream().map(
+        (Object? event) => BleReadEvent.fromMap((event as Map<Object?, Object?>).cast<String, Object?>()),
+      );
 
   @override
   Future<void> startServer({required String serviceUuid, required List<BleCharacteristic> characteristics}) async {
-    await _channel.invokeMethod('startServer', {
+    if (serviceUuid.isEmpty || characteristics.isEmpty) {
+      return;
+    }
+    await _channel.invokeMethod('startServer', <String, Object>{
       'serviceUuid': serviceUuid,
-      'characteristics': characteristics.map((c) => c.toMap()).toList(),
+      'characteristics': characteristics.map((BleCharacteristic c) => c.toMap()).toList(),
     });
   }
 
@@ -34,7 +37,10 @@ class MethodChannelUniversalBleServer extends UniversalBleServerPlatform {
 
   @override
   Future<void> notify(String characteristicUuid, List<int> value) async {
-    await _channel.invokeMethod('notify', {
+    if (characteristicUuid.isEmpty) {
+      return;
+    }
+    await _channel.invokeMethod('notify', <String, Object>{
       'characteristicUuid': characteristicUuid,
       'value': base64Encode(value),
     });
