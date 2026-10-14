@@ -1,38 +1,65 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'src/profile.dart';
 import 'src/models.dart';
 import 'universal_ble_server_method_channel.dart';
 
-/// Platform interface for [UniversalBleServer].
+typedef BleRequestHandler =
+    Future<Map<String, Object>> Function(Map<String, Object?> request);
+
 abstract class UniversalBleServerPlatform extends PlatformInterface {
   UniversalBleServerPlatform() : super(token: _token);
-
   static final Object _token = Object();
-
-  static UniversalBleServerPlatform _instance = MethodChannelUniversalBleServer();
-
-  /// The default instance of [UniversalBleServerPlatform] to use.
+  static UniversalBleServerPlatform _instance =
+      MethodChannelUniversalBleServer();
   static UniversalBleServerPlatform get instance => _instance;
-
-  /// Platform-specific implementations should set this with their own
-  /// platform-specific class that extends [UniversalBleServerPlatform] when
-  /// they register themselves.
   static set instance(UniversalBleServerPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
 
-  /// Stream of write events from connected centrals.
-  Stream<BleWriteEvent> get onWrite;
+  /// Adapters that share native channels must share this ownership identity.
+  Object get ownershipKey => this;
+  Stream<Map<String, Object?>> get events;
+  Stream<BleWriteEvent> get onWrite =>
+      events.where((e) => e['type'] == 'write').map(BleWriteEvent.fromMap);
+  Stream<BleReadEvent> get onRead =>
+      events.where((e) => e['type'] == 'read').map(BleReadEvent.fromMap);
+  void setRequestHandler(BleRequestHandler? handler);
+  Future<BleCapabilities> checkSupport();
 
-  /// Stream of read events from connected centrals.
-  Stream<BleReadEvent> get onRead;
-
-  /// Starts a BLE server with [serviceUuid] and [characteristics].
-  Future<void> startServer({required String serviceUuid, required List<BleCharacteristic> characteristics});
-
-  /// Stops the running BLE server.
+  /// On Android, requires a foreground Activity. On Apple, system-managed.
+  Future<BleCapabilities> requestPermissions();
+  Future<void> startProfile(BleProfile profile);
+  Future<void> startServer({
+    required String serviceUuid,
+    required List<BleCharacteristic> characteristics,
+  }) => startProfile(
+    BleProfile(
+      services: [
+        BleService(
+          uuid: serviceUuid,
+          fields: characteristics
+              .map(
+                (c) => BleField<List<int>>(
+                  uuid: c.uuid,
+                  codec: BleCodecs.bytes,
+                  initialValue: c.initialValue,
+                  access: c.properties.toSet(),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    ),
+  );
   Future<void> stopServer();
-
-  /// Sends a notification for a characteristic update.
+  Future<void> setValue(String characteristicUuid, List<int> value);
   Future<void> notify(String characteristicUuid, List<int> value);
+  Future<void> notifyClient(
+    String characteristicUuid,
+    List<int> value,
+    String clientId,
+  ) => Future.error(
+    UnsupportedError('This adapter does not support targeted notifications'),
+  );
 }

@@ -4,16 +4,17 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'universal_ble_server'
-  s.version          = '0.0.1'
-  s.summary          = 'Universal BLE peripheral plugin.'
+  s.version          = '0.1.0'
+  s.summary          = 'Native BLE clients and servers.'
   s.description      = <<-DESC
-Cross-platform BLE peripheral plugin.
+Native BLE clients and servers configured from Dart.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/arlamend7/flutter_universal_ble_server'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.author           = 'universal_ble_server contributors'
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files = 'universal_ble_server/Sources/universal_ble_server/**/*.swift'
+  s.resource_bundles = {'universal_ble_server_privacy' => ['universal_ble_server/Sources/universal_ble_server/PrivacyInfo.xcprivacy']}
   s.dependency 'Flutter'
   s.platform = :ios, '12.0'
 

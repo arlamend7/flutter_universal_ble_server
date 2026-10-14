@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cliente de mensagens BLE</title>
+<style>body{font:16px system-ui;max-width:760px;margin:40px auto;padding:0 20px}button,textarea{font:inherit;padding:10px;margin:8px 0}textarea{width:100%;box-sizing:border-box}pre{white-space:pre-wrap;background:#f3f4f6;padding:16px;min-height:160px}button{cursor:pointer}</style>
+<h1>Cliente de mensagens BLE</h1>
+<p>Abra no Chrome/Edge em localhost ou HTTPS. Inicie o exemplo Flutter em outro dispositivo. O navegador atua como cliente BLE.</p>
+<button id="connect">Conectar</button> <button id="disconnect" disabled>Desconectar</button>
+<p id="status">Desconectado</p>
+<textarea id="text" rows="3">Olá do cliente!</textarea>
+<button id="send" disabled>Enviar ao servidor</button>
+<pre id="log" aria-live="polite"></pre>
+<script>
+'use strict';
+const uuids = {service:'d973f2e0-b19e-11ee-a506-0242ac120002',rx:'d973f2e1-b19e-11ee-a506-0242ac120002',tx:'d973f2e2-b19e-11ee-a506-0242ac120002',name:'d973f2e3-b19e-11ee-a506-0242ac120002'};
+const el = id => document.getElementById(id);
+const log = text => { el('log').textContent = (text + '\n' + el('log').textContent).slice(0, 12000); };
+let device, rx, tx, messageId = 0, assembly, timer, connecting = false;
+function resetAssembly() { clearTimeout(timer); assembly = undefined; }
+function disconnected() {
+  resetAssembly(); rx = undefined;
+  if (tx) tx.removeEventListener('characteristicvaluechanged', receive);
+  tx = undefined;
+  el('status').textContent = 'Desconectado'; el('send').disabled = true;
+  el('disconnect').disabled = true; el('connect').disabled = false;
+}
+function receive(event) {
+  try {
+    const v = event.target.value;
+    if (v.byteLength < 7 || v.getUint8(0) !== 1) throw Error('Quadro inválido');
+    const id = v.getUint16(1, true), index = v.getUint16(3, true), count = v.getUint16(5, true);
+    if (!count || index >= count || (v.byteLength === 7 && count !== 1)) throw Error('Cabeçalho inválido');
+    if (!assembly) {
+      if (index !== 0) throw Error('Primeiro fragmento ausente');
+      assembly = {id, count, next:0, bytes:[]};
+      timer = setTimeout(() => { resetAssembly(); log('Mensagem incompleta expirou'); }, 10000);
+    }
+    if (id !== assembly.id || count !== assembly.count || index !== assembly.next) throw Error('Fragmentos fora de ordem');
+    if (assembly.bytes.length + v.byteLength - 7 > 65535) throw Error('Mensagem muito grande');
+    for (let i = 7; i < v.byteLength; i++) assembly.bytes.push(v.getUint8(i));
+    assembly.next++;
+    if (assembly.next === count) {
+      log('Servidor: ' + new TextDecoder().decode(new Uint8Array(assembly.bytes)));
+      resetAssembly();
+    }
+  } catch (error) { resetAssembly(); log(error.message); }
+}
+el('connect').onclick = async () => {
+  if (connecting) return;
+  connecting = true; el('connect').disabled = true;
+  try {
+    if (!navigator.bluetooth) throw Error('Web Bluetooth não está disponível neste navegador');
+    device = await navigator.bluetooth.requestDevice({filters:[{services:[uuids.service]}]});
+    device.addEventListener('gattserverdisconnected', disconnected, {once:true});
+    const gatt = await device.gatt.connect();
+    const service = await gatt.getPrimaryService(uuids.service);
+    rx = await service.getCharacteristic(uuids.rx);
+    tx = await service.getCharacteristic(uuids.tx);
+    tx.addEventListener('characteristicvaluechanged', receive);
+    await tx.startNotifications();
+    const name = await (await service.getCharacteristic(uuids.name)).readValue();
+    el('status').textContent = 'Conectado: ' + new TextDecoder().decode(name);
+    el('disconnect').disabled = false; el('send').disabled = false;
+  } catch (error) { if (device?.gatt.connected) device.gatt.disconnect(); disconnected(); log(error.message); }
+  finally { connecting = false; }
+};
+el('disconnect').onclick = () => device?.gatt.disconnect();
+el('send').onclick = async () => {
+  el('send').disabled = true;
+  try {
+    const target = rx;
+    if (!target || !device?.gatt.connected) throw Error('Conecte primeiro');
+    const bytes = new TextEncoder().encode(el('text').value);
+    if (bytes.length > 65535) throw Error('Máximo de 65535 bytes');
+    const id = messageId++ % 65536, count = Math.max(1, Math.ceil(bytes.length / 13));
+    for (let index = 0; index < count; index++) {
+      if (target !== rx || !device.gatt.connected) throw Error('Transferência interrompida');
+      const part = bytes.slice(index * 13, (index + 1) * 13);
+      const frame = new Uint8Array(7 + part.length), header = new DataView(frame.buffer);
+      header.setUint8(0, 1); header.setUint16(1, id, true);
+      header.setUint16(3, index, true); header.setUint16(5, count, true); frame.set(part, 7);
+      await target.writeValueWithResponse(frame);
+    }
+    log('Cliente: ' + el('text').value);
+  } catch (error) { log(error.message); }
+  finally { el('send').disabled = !device?.gatt.connected; }
+};
+</script>
+</html>

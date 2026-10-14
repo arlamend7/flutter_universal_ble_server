@@ -1,38 +1,36 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
-
-import 'src/models.dart';
+import 'src/profile.dart';
 import 'universal_ble_server_platform_interface.dart';
 
-/// Web stub that indicates BLE peripheral mode is unsupported.
+/// Browser APIs do not provide the peripheral role required by this plugin.
 class UniversalBleServerWeb extends UniversalBleServerPlatform {
   static void registerWith(Registrar registrar) {
     UniversalBleServerPlatform.instance = UniversalBleServerWeb();
   }
 
   @override
-  Stream<BleWriteEvent> get onWrite => const Stream.empty();
-
+  Stream<Map<String, Object?>> get events => const Stream.empty();
   @override
-  Stream<BleReadEvent> get onRead => const Stream.empty();
-
-  void _log() => debugPrint('BLE peripheral is not supported on the web');
-
+  void setRequestHandler(BleRequestHandler? handler) {}
   @override
-  Future<void> startServer({required String serviceUuid, required List<BleCharacteristic> characteristics}) {
-    _log();
-    return Future<void>.value();
-  }
-
+  Future<BleCapabilities> checkSupport() async => const BleCapabilities(
+    peripheral: false,
+    poweredOn: false,
+    authorized: false,
+    platform: 'web',
+    reason: 'Web Bluetooth does not expose a BLE peripheral server.',
+  );
   @override
-  Future<void> stopServer() {
-    _log();
-    return Future<void>.value();
-  }
-
+  Future<BleCapabilities> requestPermissions() => checkSupport();
   @override
-  Future<void> notify(String characteristicUuid, List<int> value) {
-    _log();
-    return Future<void>.value();
-  }
+  Future<void> startProfile(BleProfile profile) async =>
+      throw UnsupportedError('BLE peripheral is unavailable on Web');
+  @override
+  Future<void> stopServer() async {}
+  @override
+  Future<void> setValue(String characteristicUuid, List<int> value) async =>
+      throw UnsupportedError('BLE peripheral is unavailable on Web');
+  @override
+  Future<void> notify(String characteristicUuid, List<int> value) async =>
+      throw UnsupportedError('BLE peripheral is unavailable on Web');
 }

@@ -1,4 +1,5 @@
 name: universal_ble_server_example
+version: 1.0.0+1
 description: "Demonstrates how to use the universal_ble_server plugin."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -47,6 +48,11 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # This checkout's directory name differs from its package name. Flutter 3.47's
+  # SwiftPM local-path symlink can fail identity resolution in that situation.
+  # CocoaPods remains supported; set true in a package-named checkout for SwiftPM.
+  config:
+    enable-swift-package-manager: false
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

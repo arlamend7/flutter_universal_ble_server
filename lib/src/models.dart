@@ -19,7 +19,11 @@ BleProperty? _parseBleProperty(String? name) {
 /// Describes a BLE characteristic exposed by the server.
 class BleCharacteristic {
   /// Creates a [BleCharacteristic].
-  BleCharacteristic({required this.uuid, required this.properties, this.initialValue = const []});
+  BleCharacteristic({
+    required this.uuid,
+    required this.properties,
+    this.initialValue = const [],
+  });
 
   /// Characteristic identifier.
   final String uuid;
@@ -32,15 +36,16 @@ class BleCharacteristic {
 
   /// Converts this object to a serialisable map.
   Map<String, Object> toMap() => {
-        _uuidKey: uuid,
-        _propertiesKey: properties.map((BleProperty p) => p.name).toList(),
-        _valueKey: base64Encode(initialValue),
-      };
+    _uuidKey: uuid,
+    _propertiesKey: properties.map((BleProperty p) => p.name).toList(),
+    _valueKey: base64Encode(initialValue),
+  };
 
   /// Creates a [BleCharacteristic] from [map]. Unknown properties are ignored.
   static BleCharacteristic fromMap(Map<String, Object?> map) {
     final String id = (map[_uuidKey] as String?) ?? '';
-    final List<Object?> propertyNames = (map[_propertiesKey] as List<Object?>?) ?? const [];
+    final List<Object?> propertyNames =
+        (map[_propertiesKey] as List<Object?>?) ?? const [];
     final List<BleProperty> props = <BleProperty>[];
     for (final Object? name in propertyNames) {
       final BleProperty? property = _parseBleProperty(name as String?);
@@ -57,44 +62,71 @@ class BleCharacteristic {
 /// Event emitted when a central writes to a characteristic.
 class BleWriteEvent {
   /// Creates a [BleWriteEvent].
-  BleWriteEvent({required this.characteristicUuid, required this.value});
+  BleWriteEvent({
+    required this.characteristicUuid,
+    required List<int> value,
+    this.clientId = '',
+    this.offset = 0,
+  }) : value = List.unmodifiable(value);
 
   /// Identifier of the characteristic that was written to.
   final String characteristicUuid;
 
   /// Written value.
   final List<int> value;
+  final String clientId;
+  final int offset;
 
   /// Builds a [BleWriteEvent] from [map]. Missing fields yield empty values.
   factory BleWriteEvent.fromMap(Map<String, Object?> map) {
     final String id = (map[_uuidKey] as String?) ?? '';
     final String? encoded = map[_valueKey] as String?;
     final List<int> bytes = encoded == null ? <int>[] : base64Decode(encoded);
-    return BleWriteEvent(characteristicUuid: id, value: bytes);
+    return BleWriteEvent(
+      characteristicUuid: id,
+      value: bytes,
+      clientId: map['clientId'] as String? ?? '',
+      offset: map['offset'] as int? ?? 0,
+    );
   }
 
   /// Converts this object to a serialisable map.
   Map<String, Object> toMap() => {
-        _uuidKey: characteristicUuid,
-        _valueKey: base64Encode(value),
-      };
+    _uuidKey: characteristicUuid,
+    _valueKey: base64Encode(value),
+    'clientId': clientId,
+    'offset': offset,
+  };
 }
 
 /// Event emitted when a central reads a characteristic.
 class BleReadEvent {
   /// Creates a [BleReadEvent].
-  BleReadEvent({required this.characteristicUuid});
+  BleReadEvent({
+    required this.characteristicUuid,
+    this.clientId = '',
+    this.offset = 0,
+  });
 
   /// Identifier of the characteristic that was read.
   final String characteristicUuid;
+  final String clientId;
+  final int offset;
 
   /// Builds a [BleReadEvent] from [map]. Missing UUID becomes an empty string.
   factory BleReadEvent.fromMap(Map<String, Object?> map) {
     final String id = (map[_uuidKey] as String?) ?? '';
-    return BleReadEvent(characteristicUuid: id);
+    return BleReadEvent(
+      characteristicUuid: id,
+      clientId: map['clientId'] as String? ?? '',
+      offset: map['offset'] as int? ?? 0,
+    );
   }
 
   /// Converts this object to a serialisable map.
-  Map<String, Object> toMap() => {_uuidKey: characteristicUuid};
+  Map<String, Object> toMap() => {
+    _uuidKey: characteristicUuid,
+    'clientId': clientId,
+    'offset': offset,
+  };
 }
-

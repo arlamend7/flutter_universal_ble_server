@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  universal_ble_server
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

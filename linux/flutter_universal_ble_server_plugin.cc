@@ -1,12 +1,11 @@
-#include "include/flutter_universal_ble_server/flutter_universal_ble_server_plugin.h"
+#include "include/universal_ble_server/flutter_universal_ble_server_plugin.h"
 
 #include <flutter_linux/flutter_linux.h>
 #include <gtk/gtk.h>
-#include <sys/utsname.h>
 
 #include <cstring>
+#include "ble_central.h"
 
-#include "flutter_universal_ble_server_plugin_private.h"
 
 #define FLUTTER_UNIVERSAL_BLE_SERVER_PLUGIN(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), flutter_universal_ble_server_plugin_get_type(), \
@@ -26,21 +25,21 @@ static void flutter_universal_ble_server_plugin_handle_method_call(
 
   const gchar* method = fl_method_call_get_name(method_call);
 
-  if (strcmp(method, "getPlatformVersion") == 0) {
-    response = get_platform_version();
+  if (strcmp(method, "checkSupport") == 0 || strcmp(method, "requestPermissions") == 0) {
+    g_autoptr(FlValue) value = fl_value_new_map();
+    fl_value_set_string_take(value, "platform", fl_value_new_string("linux"));
+    fl_value_set_string_take(value, "peripheral", fl_value_new_bool(false));
+    fl_value_set_string_take(value, "poweredOn", fl_value_new_bool(false));
+    fl_value_set_string_take(value, "authorized", fl_value_new_bool(false));
+    fl_value_set_string_take(value, "reason", fl_value_new_string("Linux BlueZ peripheral backend is not implemented"));
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(value));
+  } else if (strcmp(method, "stopServer") == 0) {
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
   } else {
-    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+    response = FL_METHOD_RESPONSE(fl_method_error_response_new("unsupported", "Linux peripheral backend is not implemented", nullptr));
   }
 
   fl_method_call_respond(method_call, response, nullptr);
-}
-
-FlMethodResponse* get_platform_version() {
-  struct utsname uname_data = {};
-  uname(&uname_data);
-  g_autofree gchar *version = g_strdup_printf("Linux %s", uname_data.version);
-  g_autoptr(FlValue) result = fl_value_new_string(version);
-  return FL_METHOD_RESPONSE(fl_method_success_response_new(result));
 }
 
 static void flutter_universal_ble_server_plugin_dispose(GObject* object) {
@@ -60,13 +59,14 @@ static void method_call_cb(FlMethodChannel* channel, FlMethodCall* method_call,
 }
 
 void flutter_universal_ble_server_plugin_register_with_registrar(FlPluginRegistrar* registrar) {
+  register_ble_central(fl_plugin_registrar_get_messenger(registrar));
   FlutterUniversalBleServerPlugin* plugin = FLUTTER_UNIVERSAL_BLE_SERVER_PLUGIN(
       g_object_new(flutter_universal_ble_server_plugin_get_type(), nullptr));
 
   g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
   g_autoptr(FlMethodChannel) channel =
       fl_method_channel_new(fl_plugin_registrar_get_messenger(registrar),
-                            "flutter_universal_ble_server",
+                            "universal_ble_server/methods",
                             FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(channel, method_call_cb,
                                             g_object_ref(plugin),

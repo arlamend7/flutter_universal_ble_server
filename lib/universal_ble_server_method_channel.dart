@@ -1,48 +1,62 @@
 import 'dart:convert';
-
 import 'package:flutter/services.dart';
-
-import 'src/models.dart';
+import 'src/profile.dart';
 import 'universal_ble_server_platform_interface.dart';
 
-/// Method-channel implementation of [UniversalBleServerPlatform].
 class MethodChannelUniversalBleServer extends UniversalBleServerPlatform {
-  static const MethodChannel _channel = MethodChannel('universal_ble_server/methods');
-  static const EventChannel _writeChannel = EventChannel('universal_ble_server/onWrite');
-  static const EventChannel _readChannel = EventChannel('universal_ble_server/onRead');
-
+  static final Object _ownershipKey = Object();
   @override
-  Stream<BleWriteEvent> get onWrite => _writeChannel.receiveBroadcastStream().map(
-        (Object? event) => BleWriteEvent.fromMap((event as Map<Object?, Object?>).cast<String, Object?>()),
-      );
-
+  Object get ownershipKey => _ownershipKey;
+  static const _channel = MethodChannel('universal_ble_server/methods');
+  static const _events = EventChannel('universal_ble_server/events');
+  late final Stream<Map<String, Object?>> _stream = _events
+      .receiveBroadcastStream()
+      .map((event) => Map<String, Object?>.from(event as Map));
   @override
-  Stream<BleReadEvent> get onRead => _readChannel.receiveBroadcastStream().map(
-        (Object? event) => BleReadEvent.fromMap((event as Map<Object?, Object?>).cast<String, Object?>()),
-      );
-
+  Stream<Map<String, Object?>> get events => _stream;
   @override
-  Future<void> startServer({required String serviceUuid, required List<BleCharacteristic> characteristics}) async {
-    if (serviceUuid.isEmpty || characteristics.isEmpty) {
-      return;
-    }
-    await _channel.invokeMethod('startServer', <String, Object>{
-      'serviceUuid': serviceUuid,
-      'characteristics': characteristics.map((BleCharacteristic c) => c.toMap()).toList(),
-    });
+  void setRequestHandler(BleRequestHandler? handler) {
+    _channel.setMethodCallHandler(
+      handler == null
+          ? null
+          : (call) async {
+              if (call.method != 'request') throw MissingPluginException();
+              return handler(Map<String, Object?>.from(call.arguments as Map));
+            },
+    );
   }
 
+  @override
+  Future<BleCapabilities> checkSupport() async => BleCapabilities.fromMap(
+    await _channel.invokeMapMethod<Object?, Object?>('checkSupport') ?? {},
+  );
+  @override
+  Future<BleCapabilities> requestPermissions() async => BleCapabilities.fromMap(
+    await _channel.invokeMapMethod<Object?, Object?>('requestPermissions') ??
+        {},
+  );
+  @override
+  Future<void> startProfile(BleProfile profile) =>
+      _channel.invokeMethod('startServer', profile.toMap());
   @override
   Future<void> stopServer() => _channel.invokeMethod('stopServer');
-
+  Map<String, Object> _value(String uuid, List<int> bytes) => {
+    'characteristicUuid': normalizeBleUuid(uuid),
+    'value': base64Encode(bleBytes(bytes)),
+  };
   @override
-  Future<void> notify(String characteristicUuid, List<int> value) async {
-    if (characteristicUuid.isEmpty) {
-      return;
-    }
-    await _channel.invokeMethod('notify', <String, Object>{
-      'characteristicUuid': characteristicUuid,
-      'value': base64Encode(value),
-    });
-  }
+  Future<void> setValue(String characteristicUuid, List<int> value) =>
+      _channel.invokeMethod('setValue', _value(characteristicUuid, value));
+  @override
+  Future<void> notify(String characteristicUuid, List<int> value) =>
+      _channel.invokeMethod('notify', _value(characteristicUuid, value));
+  @override
+  Future<void> notifyClient(
+    String characteristicUuid,
+    List<int> value,
+    String clientId,
+  ) => _channel.invokeMethod('notify', {
+    ..._value(characteristicUuid, value),
+    'clientId': clientId,
+  });
 }
