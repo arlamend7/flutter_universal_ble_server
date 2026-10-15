@@ -48,6 +48,13 @@ class UniversalBleClient {
     _subscriptions.add(this.transport.disconnected.listen((_) => _lost()));
     _subscriptions.add(
       this.transport.adapterStates.listen((s) {
+        if (s != BleAdapterState.poweredOn && _scanDone != null) {
+          try {
+            requireClientReady(s);
+          } on BleException catch (error) {
+            _transportError(error);
+          }
+        }
         if (s != BleAdapterState.poweredOn &&
             state != BleConnectionState.disconnected &&
             state != BleConnectionState.disposed) {

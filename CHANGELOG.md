@@ -1,5 +1,15 @@
 ## 0.1.0
 
+* Keep the example compatible with Flutter 3.32 by selecting Apple dependency
+  managers through Flutter CLI settings instead of the newer `flutter.config`
+  pubspec section. Both CocoaPods and SwiftPM retain separate CI builds.
+
+* Add an opt-in native acceptance host and device test runner, including
+  two-client routing, configurable payload sizes, fields and reconnect checks.
+* Add maximum-payload, concurrent-client, interrupted-transfer and repeated
+  reconnect regressions. Stop discovery with a typed error if adapter state
+  becomes unavailable during an active scan.
+
 * Simplify common flows with bounded `discover`, `startWithPermissions`, direct
   field extensions, sender-specific replies and forwarding. Existing APIs remain.
 * Add optional `excludeClientId` to message sends with recipient snapshots.

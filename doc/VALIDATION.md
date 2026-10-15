@@ -2,6 +2,49 @@
 
 Environment: macOS, Flutter 3.47.5 stable, Dart 3.13.4.
 
+## Minimum SDK correction (2026-10-14)
+
+- The release CI failure came from `flutter.config` in `example/pubspec.yaml`,
+  which Flutter 3.32 does not recognize. Removed this section and selected each
+  Apple dependency manager with `flutter config` on its isolated CI runner.
+  The example now inherits the developer's SDK setting; setup instructions
+  document CocoaPods and SwiftPM selection.
+- Verified the exact minimum-SDK job locally using a temporary Flutter 3.32.8
+  installation and an isolated copy of the package: `flutter pub downgrade`
+  passed, `flutter analyze` reported no issues, and **all 63 tests passed**.
+  The current workspace's dependency locks and installed SDK were preserved.
+- Workflow YAML parsing and `git diff --check` pass. This supersedes the earlier
+  note that the minimum SDK had not been tested. No physical BLE validation was
+  performed by this compatibility check.
+
+## Acceptance test preparation (2026-10-14)
+
+- `flutter test --coverage`: **63 passing tests**, including eight new simulated
+  acceptance regressions. Instrumented package Dart coverage is **85.7%**
+  (1,630/1,901 lines). No native/radio coverage is implied.
+- New regressions cover a full 65,535-byte bidirectional round trip, rejection
+  and recovery after oversized sends, simultaneous private replies, broadcast to
+  both clients, field watcher isolation, permission/power failures, interruption
+  midway through a fragmented write, and 20 reconnect cycles without duplicate
+  field notifications.
+- A new test exposed discovery waiting after the adapter reports Bluetooth off.
+  The client now stops the scan and reports the corresponding typed error.
+- Strict static analysis and formatting checks pass. The native acceptance host
+  compiles for macOS, and the enabled integration-test runner compiles for iOS
+  with signing disabled. Neither build was used to claim a physical test pass.
+- Added an opt-in native integration suite and manual instructions with a results
+  template. The suite requires a separate physical host; two-client mode uses a
+  barrier and checks private-message isolation and receipt of the other client's
+  broadcast. Fields are tested separately with one client to avoid shared writes
+  racing. No system permission or power setting is changed automatically.
+- Device inventory found this Mac, an iOS simulator and Chrome; no physical
+  phone was connected. The user chose to run the hardware tests later. Thus
+  **physical acceptance remains NOT RUN**, including permissions, real radio
+  recovery, pairing and sustained operation.
+- The earlier GitHub run for `d537b80` compiled Windows and Linux successfully,
+  as well as Android and Apple targets. This supersedes the older compilation
+  gaps below. It does not establish BLE interoperability.
+
 ## Package API and release preparation (2026-10-14)
 
 - `flutter test --coverage`: **55 passing tests**, covering 1,617 of 1,897

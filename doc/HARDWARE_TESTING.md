@@ -3,6 +3,119 @@
 Status: pending execution on physical devices. Do not mark a platform validated
 solely because Dart tests or a native build passes.
 
+## Run the prepared device tests
+
+The native host and test runner use the real platform adapters. They are separate
+from the simulated regression tests. Start with **two physical devices**: this
+Mac can be the host and an Android phone or iPhone can be the client. An iOS
+simulator cannot substitute for the second BLE radio. Keep both apps unlocked
+and in the foreground, and grant Bluetooth permission when prompted.
+
+From `example/`, list device IDs with `flutter devices`, then start the host:
+
+For Apple hosts/clients, first select the dependency manager as described in
+[the example setup](../example/README.md#apple-dependency-managers). This checkout
+has been tested with CocoaPods; SwiftPM needs the package-named checkout described
+there.
+
+```sh
+flutter run -d macos -t lib/acceptance_host.dart --dart-define=BLE_TEST_RUN=local
+```
+
+Press **Start host** and wait for **READY**. In another terminal, from `example/`,
+run the client suite (replace `PHONE_ID` with the physical device ID):
+
+```sh
+flutter test integration_test/ble_acceptance_test.dart -d PHONE_ID \
+  --dart-define=BLE_RUN_HARDWARE=true --dart-define=BLE_TEST_RUN=local
+```
+
+iOS devices require your development signing configuration. Both devices must
+use the same source revision and `BLE_TEST_RUN`. The isolated test service avoids
+connecting to the normal chat demo. If multiple test hosts are discovered, the
+test fails rather than choosing arbitrarily; use the printed ID with
+`--dart-define=BLE_TEST_PEER=SERVER_ID` to select one. Only use trusted devices:
+the test host intentionally allows field writes, echoes and broadcasts.
+
+The runner checks:
+
+- Discovery, matching protocol metadata and the logical configured server name.
+- Exact UTF-8 and binary round trips, including 32-, 512- and 4,096-byte messages.
+- Rejection of 65,536-byte messages and successful communication afterward.
+- Private replies, broadcasts, typed reads/writes, notifications and watch cancellation.
+- Three intentional disconnect/reconnect cycles with restored message delivery.
+- Unexpected asynchronous errors and private responses delivered to the wrong client.
+
+All hardware tests are skipped unless `BLE_RUN_HARDWARE=true` is provided. A skip
+is **not** a pass. The test run has a 15-minute deadline; individual message
+exchanges have a three-minute deadline. A failure is useful evidence, not a
+reason to bypass the assertion. Host errors appear as **FAIL** in its log.
+
+### One host and two clients
+
+Run the client command on **two separate physical client devices**, adding these
+options to both commands:
+
+```sh
+--dart-define=BLE_TEST_CLIENTS=2 --dart-define=BLE_TEST_FIELDS=false
+```
+
+The clients wait at a start barrier until both arrive. Each client checks its own
+private replies and receives the other client's broadcast before either starts
+disconnecting. Random per-run client tokens expose accidental private-message
+delivery to the wrong client. Shared-field writes are disabled in this mode to
+avoid two independent test scripts racing over the same value; validate fields
+with the single-client suite first. Start both runners within three minutes.
+Use separate copies of the same revision for concurrent native builds so their
+generated build files do not collide. Both client runs must pass.
+
+### Largest payload and slower devices
+
+Add `--dart-define=BLE_TEST_MAX_BYTES=65535` to the client command to exercise the
+full configured message limit. The default 20-byte frames leave 13 payload bytes
+per frame, so this is over 5,000 frames **in each direction**. Maximum length is
+not a guarantee of delivery within the default ten-second assembly deadline.
+
+First test the defaults. If a slower device requires a longer deadline, repeat
+with `--dart-define=BLE_ASSEMBLY_SECONDS=180` on **both** host and client, and
+record this configuration separately. Do not report that result as a pass with
+the defaults. Increasing an assembly deadline does not increase the wire limit.
+
+### Denied permission and Bluetooth off
+
+These checks do not need a running host. Run the client command with one of:
+
+```sh
+--dart-define=BLE_EXPECT_STATE=unauthorized
+--dart-define=BLE_EXPECT_STATE=poweredOff
+```
+
+For `unauthorized`, deny the permission prompt or revoke the app's Bluetooth
+permission in system settings first. For `poweredOff`, grant permission and
+disable Bluetooth in system settings first. The test verifies the reported state
+and the typed discovery error. Restore permission/power and rerun the normal
+suite to check recovery. The tests do not change system settings for you.
+
+Abrupt radio loss **during** a connection, OS permission revocation while active,
+pairing, background behavior and long-duration stability still require the
+manual checks below. Intentional reconnect tests do not establish automatic
+recovery after radio loss. Simulated fault tests cover Dart behavior only.
+
+### Record results and API review
+
+Copy [the results template](ACCEPTANCE_RESULTS.md) for each device combination.
+Keep the client output and host log. Record failures and skipped scenarios as
+such, including the exact configuration, rather than marking the platform passed
+from one happy-path run.
+
+Before declaring the API stable, integrate the ordinary chat and session-counter
+examples into a separate application using only public imports. Review creation,
+permissions, selection, send/receive, fields and disposal with an application
+developer. Record any naming or lifecycle changes needed. Automated tests cannot
+establish usability, nor promise that future API changes will never be needed.
+
+## Manual acceptance
+
 For each supported Android/iOS/macOS/Windows server, test with both an Android and
 an iOS central where possible. Record OS version, device/adapter, driver, app build
 and results. Use a BLE inspector or your own central implementing the same UUIDs.
@@ -43,7 +156,7 @@ and results. Use a BLE inspector or your own central implementing the same UUIDs
 | Android | Debug example build passed locally | Not yet tested | Pending |
 | iOS | Unsigned debug example build passed locally | Not yet tested | Pending |
 | macOS | Debug example build passed locally | Not yet tested | Pending |
-| Windows | Windows CI required | Not yet tested | Pending |
+| Windows | CI debug build passed for d537b80 | Not yet tested | Pending |
 
 Web and Linux intentionally report unsupported peripheral capability.
 
@@ -88,8 +201,8 @@ cannot run the native client/session demo.
 | Android | Debug example passed | Pending |
 | iOS | Unsigned debug example passed | Pending |
 | macOS | Debug example passed | Pending |
-| Windows | Requires Windows runner | Pending |
-| Linux | Requires Linux runner | Pending |
+| Windows | CI debug build passed for d537b80 | Pending |
+| Linux | CI debug build passed for d537b80 | Pending |
 
 Record device/OS/driver, client and server versions, configuration, observed MTU,
 foreground/background state and each result. These checks are not yet executed.

@@ -2,6 +2,11 @@
 
 Run `flutter run` from this directory on two or three physical devices.
 
+For automated tests against a physical peer, use the separate
+[acceptance host and device runner](../doc/HARDWARE_TESTING.md#run-the-prepared-device-tests).
+It covers message integrity, routing, fields and reconnection; it is opt-in and
+does not run as part of the ordinary example.
+
 ## Start here: simple chat
 
 Choose **Simple chat: host, connect and send** on each device. Choose **Host chat**
@@ -46,10 +51,17 @@ in a compatible browser to test the original message-server screen.
 
 ## Apple dependency managers
 
-This example explicitly uses CocoaPods so it works when the checkout directory
-is named `flutter_universal_ble_server`. Flutter 3.47.5's SwiftPM local-path
-integration encountered a package-identity mismatch with that directory name.
-The plugin also supplies SwiftPM manifests and the same source files for both
-managers. To exercise SwiftPM, use a checkout directory named
-`universal_ble_server`, set `flutter.config.enable-swift-package-manager: true`
-in this example's pubspec, and rebuild. Do not edit Flutter-generated manifests.
+The example inherits your Flutter SDK's dependency-manager setting. Its pubspec
+does not use `flutter.config`, which Flutter 3.32 does not recognize. CI selects
+CocoaPods and Swift Package Manager explicitly in separate jobs.
+
+For CocoaPods, run `flutter config --no-enable-swift-package-manager` before
+building or running this example on Apple platforms. This changes Flutter's
+global setting; restore it with `flutter config --enable-swift-package-manager`
+when finished if it was previously enabled.
+
+For SwiftPM, use a checkout directory named `universal_ble_server`, run
+`flutter config --enable-swift-package-manager`, and rebuild. Flutter 3.47.5's
+local-path integration encountered a package-identity mismatch in a checkout
+named `flutter_universal_ble_server`. Both managers use the same plugin source
+files. Do not edit Flutter-generated manifests.

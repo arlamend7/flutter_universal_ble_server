@@ -12,7 +12,7 @@ Use a compatible Flutter SDK, then run from the package root:
 
 ```sh
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test example/lib tool
+dart format --output=none --set-exit-if-changed lib test example/lib example/integration_test tool
 flutter analyze
 flutter test --coverage
 flutter test --platform chrome test/web

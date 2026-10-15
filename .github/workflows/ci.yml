@@ -17,7 +17,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test example/lib tool
+      - run: dart format --output=none --set-exit-if-changed lib test example/lib example/integration_test tool
       - run: flutter analyze
       - run: dart run tool/protocol_smoke.dart
       - run: dart pub global activate dartdoc
@@ -73,6 +73,9 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: Use CocoaPods for the standard Apple builds
+        if: runner.os == 'macOS'
+        run: flutter config --no-enable-swift-package-manager
       - run: flutter pub get
       - run: flutter build ${{ matrix.target }}
         working-directory: example
@@ -95,7 +98,6 @@ jobs:
           channel: stable
           cache: true
       - name: Enable Swift Package Manager in the example
-        run: |
-          sed -i '' 's/enable-swift-package-manager: false/enable-swift-package-manager: true/' pubspec.yaml
+        run: flutter config --enable-swift-package-manager
       - run: flutter pub get
       - run: flutter build ${{ matrix.target }}
