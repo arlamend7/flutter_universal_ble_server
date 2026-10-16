@@ -1,6 +1,6 @@
 PODS:
   - FlutterMacOS (1.0.0)
-  - universal_ble_server (0.1.0):
+  - universal_ble_server (0.2.0):
     - FlutterMacOS
 
 DEPENDENCIES:
@@ -15,7 +15,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
-  universal_ble_server: fbdf280229cad56b269dd32c10aacbfa7f0ed231
+  universal_ble_server: f335be589388e9dfbdce9b3ca8c9d857c56f11fa
 
 PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
 

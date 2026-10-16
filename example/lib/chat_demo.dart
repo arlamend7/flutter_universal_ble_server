@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:universal_ble_server/universal_ble_server.dart';
 
@@ -105,9 +106,16 @@ class _ChatDemoState extends State<ChatDemo> {
         ),
       );
     }
-    final devices = await client.discover();
+    final List<BleDiscoveredServer> devices;
+    if (kIsWeb) {
+      // Call before any await so the browser retains the button's activation.
+      final device = await client.selectDevice();
+      devices = device == null ? [] : [device];
+    } else {
+      devices = await client.discover();
+    }
     if (mounted) setState(() => _devices = devices);
-    if (devices.isEmpty) {
+    if (devices.isEmpty && !kIsWeb) {
       _record('No chat found. Start a host nearby and try again.');
     }
   }
@@ -174,6 +182,10 @@ class _ChatDemoState extends State<ChatDemo> {
         const Text(
           'Open this screen on two or three devices. Host on one, then discover and connect on the others.',
         ),
+        if (kIsWeb)
+          const Text(
+            'Web browsers can join a native host. Use a browser with Web Bluetooth on HTTPS or localhost, then choose a device below.',
+          ),
         const SizedBox(height: 12),
         TextField(
           controller: _name,
@@ -184,7 +196,7 @@ class _ChatDemoState extends State<ChatDemo> {
           spacing: 12,
           children: [
             FilledButton(
-              onPressed: _busy || _server != null || _client != null
+              onPressed: kIsWeb || _busy || _server != null || _client != null
                   ? null
                   : () => _run(_host),
               child: const Text('Host chat'),
@@ -193,7 +205,9 @@ class _ChatDemoState extends State<ChatDemo> {
               onPressed: _busy || _server != null || _connected
                   ? null
                   : () => _run(_discover),
-              child: const Text('Discover chats'),
+              child: const Text(
+                kIsWeb ? 'Choose BLE device' : 'Discover chats',
+              ),
             ),
             TextButton(
               onPressed: _busy ? null : () => _run(_reset),

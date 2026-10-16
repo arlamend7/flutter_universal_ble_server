@@ -7,10 +7,25 @@ import '../models.dart';
 import 'transport.dart';
 
 /// Direct platform-channel adapter. No external Bluetooth plugin is used.
-/// One native central connection per Flutter engine; each device runs its own.
+/// Linux uses an independent native session per instance. Other native backends
+/// currently allow one client per Flutter engine.
 class NativeBleClientTransport extends BleClientTransport {
-  static const _methods = MethodChannel('universal_ble_server/client/methods');
-  static const _events = EventChannel('universal_ble_server/client/events');
+  static const _factory = MethodChannel('universal_ble_server/client/methods');
+  static int _nextSession = 0;
+  final bool _isolated =
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
+  late final String _session =
+      'dart_${DateTime.now().microsecondsSinceEpoch}_${++_nextSession}';
+  late final MethodChannel _methods = _isolated
+      ? MethodChannel('universal_ble_server/client/$_session/methods')
+      : _factory;
+  late final EventChannel _events = EventChannel(
+    _isolated
+        ? 'universal_ble_server/client/$_session/events'
+        : 'universal_ble_server/client/events',
+  );
+  Future<void>? _initializing;
+  bool _created = false;
   static NativeBleClientTransport? _owner;
   final _states = StreamController<BleAdapterState>.broadcast();
   final _discovered = StreamController<BleDiscoveredServer>.broadcast();
@@ -26,7 +41,7 @@ class NativeBleClientTransport extends BleClientTransport {
   Stream<void> get disconnected => _disconnected.stream;
   @override
   Stream<BleRawNotification> get notifications => _notifications.stream;
-  void _initialize() {
+  Future<void> _initialize() async {
     if (_disposed) throw StateError('Client disposed');
     if (kIsWeb) {
       throw const BleException(
@@ -34,13 +49,18 @@ class NativeBleClientTransport extends BleClientTransport {
         'Use the Web Bluetooth browser example',
       );
     }
-    if (_owner != null && _owner != this) {
+    if (!_isolated && _owner != null && _owner != this) {
       throw const BleException(
         BleErrorCode.busy,
         'Another client owns the native adapter',
       );
     }
-    _owner = this;
+    if (_isolated) {
+      await (_initializing ??= _createSession());
+      if (_disposed) throw StateError('Client disposed');
+    } else {
+      _owner = this;
+    }
     _subscription ??= _events.receiveBroadcastStream().listen(
       (raw) {
         try {
@@ -84,8 +104,9 @@ class NativeBleClientTransport extends BleClientTransport {
   }
 
   Future<T?> _call<T>(String method, [Map<String, Object?>? args]) async {
-    _initialize();
     try {
+      await _initialize();
+      if (_disposed) throw StateError('Client disposed');
       return await _methods.invokeMethod<T>(method, args);
     } on MissingPluginException catch (e) {
       throw BleException(
@@ -95,6 +116,16 @@ class NativeBleClientTransport extends BleClientTransport {
       );
     } on PlatformException catch (e) {
       throw _platformError(e);
+    }
+  }
+
+  Future<void> _createSession() async {
+    try {
+      await _factory.invokeMethod<void>('createClient', {'session': _session});
+      _created = true;
+    } catch (_) {
+      _initializing = null;
+      rethrow;
     }
   }
 
@@ -158,10 +189,23 @@ class NativeBleClientTransport extends BleClientTransport {
   @override
   Future<void> dispose() async {
     if (_disposed) return;
+    _disposed = true;
     try {
-      if (_owner == this) await _call<void>('dispose');
+      if (_isolated) {
+        try {
+          await _initializing;
+        } catch (_) {
+          /* No native session to release. */
+        }
+        await _subscription?.cancel();
+        _subscription = null;
+        if (_created) await _methods.invokeMethod<void>('dispose');
+      } else if (_owner == this) {
+        await _methods.invokeMethod<void>('dispose');
+      }
+    } on PlatformException catch (error) {
+      throw _platformError(error);
     } finally {
-      _disposed = true;
       await _subscription?.cancel();
       if (_owner == this) _owner = null;
       unawaited(_states.close());

@@ -1,14 +1,46 @@
+## 0.2.0
+
+### Added
+
+* Flutter Web clients using direct Web Bluetooth interop, with no new dependency.
+  `selectDevice()` opens the browser chooser from a user gesture; existing
+  messaging and typed-field APIs handle reads, writes and notifications.
+* Linux BlueZ GATT hosting with configurable advertising names, Dart read/write
+  authorization, private and broadcast notifications, MTU checks and bounded
+  notification backpressure. Oversized advertisements can retry without the name;
+  `requireAdvertisedName` keeps strict name requirements explicit.
+* Independent Linux client instances for connections to multiple peripherals.
+  Each owns its discovery, notifications and cleanup; duplicate ownership of the
+  same remote device is rejected. Existing client constructors remain unchanged.
+* A Linux peripheral-hub example, browser chat support, platform guides and
+  opt-in physical acceptance tests with a results template.
+* Native BlueZ D-Bus tests, browser JavaScript/Wasm transport tests and regression
+  coverage for maximum-size messages, private routing, interrupted transfers,
+  reconnects, independent clients and disposal races. CI includes these checks.
+
+### Fixed
+
+* Stop discovery with a typed error when Bluetooth becomes unavailable.
+* Preserve typed errors and release native client ownership when disposal fails.
+* Cancel stale Linux capability checks and release sessions created during disposal.
+* Restore Flutter 3.32 example compatibility by selecting Apple dependency
+  managers through Flutter CLI settings instead of `flutter.config` in pubspec.
+  Correct CI workflow parsing for the Swift Package Manager setup step.
+
+### Compatibility and validation
+
+* Existing public messaging and field APIs remain compatible. Browser clients
+  use `selectDevice()` instead of native scanning. Flutter Web cannot host BLE.
+* Multiple independent native client connections are implemented on Linux;
+  Android, iOS, macOS and Windows retain one client connection per Flutter engine.
+* BLE only: no Bluetooth Classic transport or additional BLE plugin dependency.
+  The Dart/Flutter minimum versions are unchanged.
+* Linux notifications require BlueZ's per-device `AcquireNotify` support.
+  Linux/Pi builds and physical interoperability still require validation. Earlier
+  macOS native-test runs intermittently hit a GLib socket-cleanup warning whose
+  cause remains unresolved. See `doc/VALIDATION.md` for evidence and limits.
+
 ## 0.1.0
-
-* Keep the example compatible with Flutter 3.32 by selecting Apple dependency
-  managers through Flutter CLI settings instead of the newer `flutter.config`
-  pubspec section. Both CocoaPods and SwiftPM retain separate CI builds.
-
-* Add an opt-in native acceptance host and device test runner, including
-  two-client routing, configurable payload sizes, fields and reconnect checks.
-* Add maximum-payload, concurrent-client, interrupted-transfer and repeated
-  reconnect regressions. Stop discovery with a typed error if adapter state
-  becomes unavailable during an active scan.
 
 * Simplify common flows with bounded `discover`, `startWithPermissions`, direct
   field extensions, sender-specific replies and forwarding. Existing APIs remain.

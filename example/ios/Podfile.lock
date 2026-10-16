@@ -2,7 +2,7 @@ PODS:
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - universal_ble_server (0.1.0):
+  - universal_ble_server (0.2.0):
     - Flutter
 
 DEPENDENCIES:
@@ -21,7 +21,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  universal_ble_server: d3ace9e51f0cb7d9251bf89b9e50cc74389eebb9
+  universal_ble_server: 1d79fbb0a3a6f42d17f94eaa5f65d01518a9f38f
 
 PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
 

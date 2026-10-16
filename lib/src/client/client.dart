@@ -2,7 +2,7 @@ import 'dart:async';
 import '../communication.dart';
 import '../models.dart';
 import '../profile.dart';
-import 'native_transport.dart';
+import 'default_transport.dart';
 import 'transport.dart';
 
 /// One decoded update with its shared field definition.
@@ -35,11 +35,12 @@ class BleReconnectPolicy {
 /// One remote server, with serialized ATT operations and reference-counted watches.
 class UniversalBleClient {
   /// Creates a client with an injectable transport, owned until disposal.
+  /// Defaults to native Bluetooth, or Web Bluetooth in a supported browser.
   UniversalBleClient({
     BleClientTransport? transport,
     this.timeout = const Duration(seconds: 12),
     this.reconnect = const BleReconnectPolicy(),
-  }) : transport = transport ?? NativeBleClientTransport() {
+  }) : transport = transport ?? createDefaultBleClientTransport() {
     if (timeout <= Duration.zero ||
         reconnect.attempts < 0 ||
         reconnect.delay < Duration.zero) {
@@ -116,7 +117,8 @@ class UniversalBleClient {
   /// Operation and queue counters without application payloads.
   Stream<BleDiagnostic> get diagnostics => _diagnostics.stream;
 
-  /// Live native advertisements, which may repeat for one device.
+  /// Live native advertisements, or devices selected by the web chooser.
+  /// Native advertisements may repeat for one device.
   Stream<BleDiscoveredServer> get discoveredServers => transport.discovered;
 
   /// Immutable snapshot of the connected server's discovered characteristics.
@@ -127,8 +129,50 @@ class UniversalBleClient {
   Future<BleAdapterState> checkSupport() => transport.checkSupport();
 
   /// Requests client-role Bluetooth permissions through the native backend.
+  /// On web this only checks availability; [selectDevice] grants device access.
   Future<BleAdapterState> requestPermissions() =>
       transport.requestPermissions();
+
+  /// Opens the browser's device chooser. Call directly from a button callback,
+  /// before awaiting anything else. Returns null if no device is selected.
+  ///
+  /// [serviceUuids] filters devices by advertised services; list additional
+  /// services to access in [optionalServiceUuids]. Selection grants access but
+  /// does not connect. Native transports use [discover] and app-owned selection
+  /// instead, and report unsupported here. Existing custom transports can opt in
+  /// by implementing [BleDeviceSelector]. No background scan is performed.
+  Future<BleDiscoveredServer?> selectDevice({
+    List<String> serviceUuids = const [],
+    List<String> optionalServiceUuids = const [],
+  }) {
+    if (_disposed) return Future.error(StateError('Client disposed'));
+    if (_connecting ||
+        state != BleConnectionState.disconnected ||
+        _discovering ||
+        _scanDone != null) {
+      return Future.error(
+        const BleException(
+          BleErrorCode.busy,
+          'Stop discovery and disconnect before selecting a device',
+        ),
+      );
+    }
+    final selector = transport;
+    if (selector is! BleDeviceSelector) {
+      return Future.error(
+        const BleException(
+          BleErrorCode.unsupported,
+          'This transport uses discover() and application-owned device selection',
+        ),
+      );
+    }
+    // Do not queue/await this call: requestDevice requires transient activation.
+    return (selector as BleDeviceSelector).selectDevice(
+      serviceUuids: serviceUuids,
+      optionalServiceUuids: optionalServiceUuids,
+    );
+  }
+
   void _set(BleConnectionState s) {
     state = s;
     if (!_states.isClosed) _states.add(s);

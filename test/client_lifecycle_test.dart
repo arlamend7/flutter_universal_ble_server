@@ -21,6 +21,25 @@ class DelayedConnect extends SimulatedBleClientTransport {
 }
 
 void main() {
+  test('existing transports need no device-selector implementation', () async {
+    final platform = SimulatedBlePlatform();
+    final client = UniversalBleClient(
+      transport: SimulatedBleClientTransport(platform),
+    );
+    await expectLater(
+      client.selectDevice(),
+      throwsA(
+        isA<BleException>().having(
+          (e) => e.code,
+          'code',
+          BleErrorCode.unsupported,
+        ),
+      ),
+    );
+    await client.dispose();
+    await platform.dispose();
+  });
+
   test(
     'combined watches close on client disposal and empty watch lists complete',
     () async {

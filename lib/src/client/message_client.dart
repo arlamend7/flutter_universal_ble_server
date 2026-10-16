@@ -8,7 +8,7 @@ import 'transport.dart';
 
 /// Matching central for BleMessageServer, including protocol verification.
 class BleMessageClient {
-  /// Creates a client owning [client], or a native client when omitted.
+  /// Creates a client owning [client], or the platform client when omitted.
   /// Dispose this wrapper to release the underlying connection.
   BleMessageClient({
     UniversalBleClient? client,

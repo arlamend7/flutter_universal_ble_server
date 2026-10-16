@@ -2,7 +2,8 @@
 
 The library now implements both roles without a third-party BLE package:
 Android uses BluetoothGatt, Apple uses CoreBluetooth, Windows uses WinRT, and
-Linux clients use BlueZ over the system D-Bus through GIO.
+Linux clients use BlueZ over the system D-Bus through GIO. Flutter Web clients
+use Web Bluetooth directly; see [browser selection and permissions](WEB.md).
 
 The following are separate, composable layers:
 
@@ -23,10 +24,11 @@ not game rules, persistence, or automatic application identity verification.
 | Android | Direct BluetoothGatt | Direct BluetoothGattServer | Example compiled; physical exchange still required |
 | iOS/macOS | Direct CBCentralManager | Direct CBPeripheralManager | Examples compiled; physical exchange still required |
 | Windows | Direct WinRT central | Direct WinRT GATT server | Source implemented; Windows compilation and device tests required |
-| Linux | Direct BlueZ D-Bus central | Explicitly unsupported | Linux compilation and device tests required |
-| Flutter Web | Explicitly unsupported | Explicitly unsupported | The standalone HTML browser client remains available |
+| Linux | Independent BlueZ central sessions | Direct BlueZ GATT/advertiser | Native D-Bus tests; Linux build and device tests required |
+| Flutter Web | Direct Web Bluetooth | Explicitly unsupported | Chrome simulated-GATT tests; physical interoperability pending |
 
-One native central connection is owned per Flutter engine. Multiple clients on
+Linux supports multiple independently owned client instances; other native
+backends retain one central connection per Flutter engine. See [Linux setup](LINUX.md). Multiple clients on
 separate devices can connect to one server, within radio/OS limits. This is not a
 claim of unlimited connections or support on every adapter. Linux uses a
 conservative 20-byte write limit. Windows reports state on capability checks and

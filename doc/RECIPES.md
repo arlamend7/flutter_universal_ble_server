@@ -3,8 +3,9 @@
 Import `package:universal_ble_server/universal_ble_server.dart` for the Flutter
 API. Ordinary instances own their lifecycles; no provider, global singleton or
 state-management package is required. Prefer constructor injection in application
-services. The default native adapter allows one client and one server per engine;
-independent injected adapters can be tested in parallel.
+services. The default native adapter allows one server per engine. Linux supports
+independent clients for multiple peripherals; other native platforms currently
+allow one client per engine. See [Linux hosting and hubs](LINUX.md).
 
 ## Chat and routing
 

@@ -15,6 +15,7 @@ set(PLUGIN_NAME "universal_ble_server_plugin")
 list(APPEND PLUGIN_SOURCES
   "flutter_universal_ble_server_plugin.cc"
   "ble_central.cc"
+  "ble_peripheral.cc"
 )
 
 # Define the plugin library target. Its name must not be changed (see comment
@@ -41,6 +42,8 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
+pkg_check_modules(GIO_UNIX REQUIRED IMPORTED_TARGET gio-unix-2.0)
+target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GIO_UNIX)
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an

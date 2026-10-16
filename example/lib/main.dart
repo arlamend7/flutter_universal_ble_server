@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'client_demo.dart';
 import 'chat_demo.dart';
+import 'peripheral_hub_demo.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:universal_ble_server/universal_ble_server.dart';
@@ -15,6 +16,15 @@ class DemoHome extends StatelessWidget {
     appBar: AppBar(title: const Text('BLE examples')),
     body: ListView(
       children: [
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux)
+          ListTile(
+            title: const Text('Linux hub: connect to multiple hosts'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PeripheralHubDemo(),
+              ),
+            ),
+          ),
         ListTile(
           title: const Text('Simple chat: host, connect and send'),
           onTap: () => Navigator.of(

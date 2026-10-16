@@ -67,6 +67,16 @@ abstract class BleClientTransport {
   Future<void> dispose();
 }
 
+/// Optional capability for transports that use a system device chooser.
+/// Kept separate so existing custom transports need no changes.
+abstract interface class BleDeviceSelector {
+  /// Returns a selected device or null when no device is chosen.
+  Future<BleDiscoveredServer?> selectDevice({
+    List<String> serviceUuids = const [],
+    List<String> optionalServiceUuids = const [],
+  });
+}
+
 void requireClientReady(BleAdapterState state) {
   switch (state) {
     case BleAdapterState.poweredOn:

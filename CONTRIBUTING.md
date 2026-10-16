@@ -16,6 +16,7 @@ dart format --output=none --set-exit-if-changed lib test example/lib example/int
 flutter analyze
 flutter test --coverage
 flutter test --platform chrome test/web
+flutter test --platform chrome --wasm test/web
 node --test test/browser_client_test.cjs
 dart run tool/protocol_smoke.dart
 dart pub global activate dartdoc
@@ -24,13 +25,19 @@ flutter pub publish --dry-run
 ```
 
 Run the example's native build on each claimed platform. CI includes Android,
-iOS, macOS, Windows and Linux runners. Browser builds verify graceful unsupported
-behavior; they do not imply browser BLE server support. See
+iOS, macOS, Windows and Linux runners. Browser tests exercise the production
+Web Bluetooth transport against simulated JS GATT objects. Build the example
+with both `flutter build web` and `flutter build web --wasm`. These checks do
+not imply physical BLE interoperability or browser server support. See
 [hardware acceptance](doc/HARDWARE_TESTING.md) for radio validation.
 
 Add focused regression tests for lifecycle races, wire behavior and error
 recovery. Avoid tests that merely restate a getter or implementation detail.
 Do not mark hardware behavior as validated based on fake transports or builds.
+
+Run `test/linux/run_tests.sh` with GLib/GIO, `pkg-config` and `dbus-daemon` to
+exercise the native BlueZ backend. The fake service uses a private bus and does
+not change the system Bluetooth service. See [Linux test limitations](doc/LINUX.md).
 
 ## Package quality and release
 
@@ -50,13 +57,20 @@ The minimum SDK compatibility job checks the declared Flutter/Dart baseline.
 Before creating a release tag:
 
 1. Run CI and physical acceptance for the target platforms.
-2. Update CHANGELOG and validation notes with evidence and known limitations.
+2. Update the version in `pubspec.yaml` and both Apple podspecs, refresh the
+   example's dependency lockfiles, and update README installation instructions.
+   Add a CHANGELOG section covering changes since the previous release tag;
+   preserve historical entries and record validation evidence and limitations.
 3. Verify package contents, license, version and repository URLs in the dry run.
 4. Commit/push approved changes so the public repository metadata matches.
 5. Check the published package version and configure pub.dev trusted publishing.
 
 The tag-triggered workflow publishes only after validation. A local pana score
 is a prediction, not a guaranteed hosted pub.dev score. Do not change supported
-platform claims simply to improve scoring; Web and Linux server limitations must
+platform claims simply to improve scoring; Web server and Linux hardware limitations must
 remain explicit. Remote repository checks can fail until local changes reach the
 public default branch.
+
+For 0.2.0 the matching release tag is `v0.2.0`. Pushing a branch runs CI;
+pushing this tag starts the publication workflow. Create the tag only when the
+release is approved and its validation requirements have been met.

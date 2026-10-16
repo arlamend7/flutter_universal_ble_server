@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:universal_ble_server/universal_ble_server.dart';
@@ -128,4 +130,129 @@ void main() {
       ),
     );
   });
+  test('disposal failures are typed and release adapter ownership', () async {
+    await transport.checkSupport();
+    messenger.setMockMethodCallHandler(methods, (call) async {
+      throw PlatformException(code: 'permission_denied');
+    });
+    await expectLater(
+      transport.dispose(),
+      throwsA(
+        isA<BleException>().having(
+          (error) => error.code,
+          'code',
+          BleErrorCode.permissionDenied,
+        ),
+      ),
+    );
+    messenger.setMockMethodCallHandler(methods, (call) async {
+      return call.method == 'checkSupport' ? 'poweredOn' : null;
+    });
+    final next = NativeBleClientTransport();
+    addTearDown(next.dispose);
+    expect(await next.checkSupport(), BleAdapterState.poweredOn);
+  });
+  test('Linux clients have independent channels and disposal', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final sessions = <String>[];
+    final disposed = <String>[];
+    messenger.setMockMethodCallHandler(methods, (call) async {
+      expect(call.method, 'createClient');
+      final id = (call.arguments as Map)['session'] as String;
+      sessions.add(id);
+      messenger.setMockMethodCallHandler(
+        MethodChannel('universal_ble_server/client/$id/events'),
+        (_) async => null,
+      );
+      messenger.setMockMethodCallHandler(
+        MethodChannel('universal_ble_server/client/$id/methods'),
+        (call) async {
+          if (call.method == 'dispose') disposed.add(id);
+          return call.method == 'checkSupport' ? 'poweredOn' : null;
+        },
+      );
+      return null;
+    });
+    final a = NativeBleClientTransport(), b = NativeBleClientTransport();
+    addTearDown(() async {
+      await a.dispose();
+      await b.dispose();
+      for (final id in sessions) {
+        messenger.setMockMethodCallHandler(
+          MethodChannel('universal_ble_server/client/$id/methods'),
+          null,
+        );
+        messenger.setMockMethodCallHandler(
+          MethodChannel('universal_ble_server/client/$id/events'),
+          null,
+        );
+      }
+      debugDefaultTargetPlatformOverride = null;
+    });
+    expect(await Future.wait([a.checkSupport(), b.checkSupport()]), [
+      BleAdapterState.poweredOn,
+      BleAdapterState.poweredOn,
+    ]);
+    expect(sessions.toSet(), hasLength(2));
+    final bMessages = <BleRawNotification>[];
+    final sub = b.notifications.listen(bMessages.add);
+    addTearDown(sub.cancel);
+    final received = a.notifications.first;
+    await messenger.handlePlatformMessage(
+      'universal_ble_server/client/${sessions[0]}/events',
+      const StandardMethodCodec().encodeSuccessEnvelope({
+        'type': 'notification',
+        'key': 'a',
+        'value': 'AQ==',
+      }),
+      (_) {},
+    );
+    expect((await received).bytes, [1]);
+    expect(bMessages, isEmpty);
+    await a.dispose();
+    expect(disposed, [sessions[0]]);
+    expect(await b.checkSupport(), BleAdapterState.poweredOn);
+    await b.dispose();
+    expect(disposed, sessions);
+  });
+
+  test(
+    'Linux disposal during session creation releases the late native session',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      final gate = Completer<void>();
+      String? session;
+      var releases = 0;
+      messenger.setMockMethodCallHandler(methods, (call) async {
+        session = (call.arguments as Map)['session'] as String;
+        messenger.setMockMethodCallHandler(
+          MethodChannel('universal_ble_server/client/$session/methods'),
+          (call) async {
+            expect(call.method, 'dispose');
+            releases++;
+            return null;
+          },
+        );
+        await gate.future;
+        return null;
+      });
+      final next = NativeBleClientTransport();
+      addTearDown(() async {
+        await next.dispose();
+        if (session != null) {
+          messenger.setMockMethodCallHandler(
+            MethodChannel('universal_ble_server/client/$session/methods'),
+            null,
+          );
+        }
+        debugDefaultTargetPlatformOverride = null;
+      });
+      final pending = expectLater(next.checkSupport(), throwsStateError);
+      await Future<void>.delayed(Duration.zero);
+      final disposal = next.dispose();
+      gate.complete();
+      await Future.wait([pending, disposal]);
+      expect(releases, 1);
+    },
+  );
 }

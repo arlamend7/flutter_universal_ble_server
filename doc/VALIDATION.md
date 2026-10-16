@@ -2,6 +2,60 @@
 
 Environment: macOS, Flutter 3.47.5 stable, Dart 3.13.4.
 
+## Linux hosting and multiple peripherals (2026-10-16)
+
+- `flutter test`: **67 passing tests**. New native-channel regressions verify
+  independent Linux sessions, notification isolation, selective disposal,
+  disposal during session creation, and typed disposal errors with ownership
+  released after failure.
+- Final strict analysis reports no issues; Dart formatting and diff whitespace
+  checks pass.
+- `test/linux/run_tests.sh`: **5 passing native tests in the latest run**, using
+  production C++ backends, a Flutter-channel test adapter, real GLib/GIO and a
+  private D-Bus daemon with a simulated BlueZ service. Tests cover GATT
+  registration/introspection, dynamic reads and authorized writes, per-device
+  notification sockets, broadcasts, backpressure, MTU rejection, adapter-off
+  cleanup, registration rollback, optional/required advertising names, cancelled
+  capability checks, simultaneous central sessions and duplicate-device ownership.
+- Native tests compile with warnings treated as errors. Earlier runs on this
+  Mac intermittently aborted with `poll(2) failed ... Bad file descriptor`.
+  Debugger traces locate the warning in GLib's `gdbus` worker; its root cause is
+  unresolved. The passing rerun does **not** establish that this is fixed.
+- macOS tests substitute datagram sockets for Linux `SOCK_SEQPACKET` and invoke
+  peer cleanup explicitly. They do not validate Linux packet-socket HUP behavior
+  or the real Flutter Linux embedding. CI is configured to run these tests with
+  Linux sockets and build the actual plugin, but that updated CI has not run yet.
+- Linux/Pi physical BLE interoperability remains **NOT RUN**. In particular,
+  verify the installed BlueZ version's per-device `AcquireNotify` support,
+  targeted delivery, adapter capacity, simultaneous roles, security and recovery.
+  See [LINUX.md](LINUX.md) for setup, limits and acceptance steps.
+- These changes add no Bluetooth Classic transport. Multiple independent native
+  client instances are implemented on Linux; other native platforms retain their
+  previous single-client limit. This supersedes older Linux-server limitations
+  below, without changing their historical test results.
+
+## Flutter Web client (2026-10-15)
+
+- `flutter test`: **64 passing tests**, including a regression verifying that
+  existing transports need not implement the new optional device selector.
+- `flutter test --platform chrome test/web`: **17 passing tests** using the
+  production Web Bluetooth transport with simulated JavaScript Bluetooth
+  objects, native browser events and promises, and the actual Dart server.
+- The same **17 tests pass with `--wasm`**. They verify synchronous chooser
+  invocation, service grants, cancellation, permission errors, metadata checks,
+  bidirectional fragmented text/binary data, typed field reads/writes/watches,
+  DataView offsets, disconnect/reconnect, subscription failure recovery, size
+  limits and late chooser/connect completion after disposal.
+- Both `flutter build web` and `flutter build web --wasm` succeed for the
+  runnable example. Strict analysis, formatting and diff whitespace checks pass.
+- CI now includes browser tests in the minimum-SDK job plus current-SDK Wasm
+  browser tests and builds. The new web implementation has not been locally
+  rerun on Flutter 3.32.8; the older minimum-SDK results below predate this change.
+- This supersedes the older unsupported-client descriptions below. Web hosting
+  remains unsupported. **Physical Web Bluetooth interoperability is NOT RUN**:
+  automated tests do not exercise the real picker, OS consent, radio or devices.
+  Setup and manual acceptance steps are in [WEB.md](WEB.md).
+
 ## Minimum SDK correction (2026-10-14)
 
 - The release CI failure came from `flutter.config` in `example/pubspec.yaml`,

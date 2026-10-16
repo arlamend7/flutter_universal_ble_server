@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'universal_ble_server'
-  s.version          = '0.1.0'
+  s.version          = '0.2.0'
   s.summary          = 'Native BLE clients and servers.'
   s.description      = <<-DESC
 Native BLE clients and servers configured from Dart.

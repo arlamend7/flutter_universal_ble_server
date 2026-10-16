@@ -10,9 +10,18 @@
 #include <functional>
 
 namespace {
+struct Leases {
+  std::mutex mutex;
+  std::map<std::string, const void*> owners;
+};
 struct Central {
   GDBusConnection* bus = nullptr;
   FlEventChannel* events = nullptr;
+  FlMethodChannel* channel = nullptr;
+  bool isolated = false;
+  std::shared_ptr<Leases> leases;
+  FlBinaryMessenger* messenger = nullptr;
+  std::map<std::string, std::weak_ptr<Central>> sessions;
   bool listening = false, scanning = false;
   std::map<std::string, GVariant*> device_properties;
   std::deque<std::function<void()>> deferred;
@@ -25,11 +34,20 @@ struct Central {
   std::vector<std::string> filters;
   std::mutex mutex;
   ~Central() {
+    if (leases) {
+      std::lock_guard<std::mutex> lock(leases->mutex);
+      auto owner = leases->owners.find(device);
+      if (owner != leases->owners.end() && owner->second == this) leases->owners.erase(owner);
+    }
     if (bus && signal) g_dbus_connection_signal_unsubscribe(bus, signal);
     for (auto& entry : device_properties) g_variant_unref(entry.second);
     if (active) g_object_unref(active);
     if (events) g_object_unref(events);
-    if (bus) g_object_unref(bus);
+    if (channel) g_object_remove_weak_pointer(G_OBJECT(channel), reinterpret_cast<gpointer*>(&channel));
+    if (bus) {
+      if (!g_dbus_connection_is_closed(bus)) g_dbus_connection_close(bus, nullptr, nullptr, nullptr);
+      g_object_unref(bus);
+    }
   }
 };
 using State = std::shared_ptr<Central>;
@@ -137,6 +155,14 @@ struct Job {
   GVariant* scan_objects = nullptr;
   ~Job() { g_object_unref(cancel); if (scan_objects) g_variant_unref(scan_objects); g_object_unref(call); if (args) fl_value_unref(args); if (value) fl_value_unref(value); if (error) g_error_free(error); }
 };
+static void ReleaseDevice(Central& s) {
+  std::lock_guard<std::mutex> lock(s.leases->mutex);
+  if (!s.device.empty()) {
+    auto found = s.leases->owners.find(s.device);
+    if (found != s.leases->owners.end() && found->second == &s) s.leases->owners.erase(found);
+  }
+  s.device.clear(); s.fields.clear();
+}
 static std::string Arg(Job& j, const char* key) {
   auto v = j.args ? fl_value_lookup_string(j.args, key) : nullptr;
   return v && fl_value_get_type(v) == FL_VALUE_TYPE_STRING ? fl_value_get_string(v) : "";
@@ -146,7 +172,14 @@ static void Work(GTask* task, gpointer, gpointer data, GCancellable*) {
   auto& j = *static_cast<Job*>(data); auto& s = *j.state;
   std::lock_guard<std::mutex> lock(s.mutex);
   s.worker_cancel = j.cancel;
-  if (!s.bus) s.bus = g_bus_get_sync(G_BUS_TYPE_SYSTEM, nullptr, &j.error);
+  // A private bus connection owns this session's discovery filter and notify
+  // subscriptions. BlueZ releases those resources when the connection closes.
+  if (!s.bus) {
+    g_autofree gchar* address = g_dbus_address_get_for_bus_sync(G_BUS_TYPE_SYSTEM, j.cancel, &j.error);
+    if (address) s.bus = g_dbus_connection_new_for_address_sync(address,
+      static_cast<GDBusConnectionFlags>(G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT | G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION),
+      nullptr, j.cancel, &j.error);
+  }
   if (!s.bus) { g_task_return_boolean(task, false); return; }
   g_autoptr(GVariant) objects = Objects(s, &j.error);
   if (!objects) { g_task_return_boolean(task, false); return; }
@@ -173,15 +206,29 @@ static void Work(GTask* task, gpointer, gpointer data, GCancellable*) {
     if (f) { g_autoptr(GVariant) r = Call(s, s.adapter, "org.bluez.Adapter1", "StartDiscovery", nullptr, &j.error); s.scanning = r != nullptr; }
   } else if (j.method == "stopScan" || j.method == "dispose") {
     if (s.scanning) { g_autoptr(GVariant) r = Call(s, s.adapter, "org.bluez.Adapter1", "StopDiscovery", nullptr, &j.error); s.scanning = false; }
-    if (j.method == "dispose" && !s.device.empty()) { g_autoptr(GVariant) r = Call(s, s.device, "org.bluez.Device1", "Disconnect", nullptr, nullptr); s.device.clear(); s.fields.clear(); }
+    if (j.method == "dispose" && !s.device.empty()) { g_autoptr(GVariant) r = Call(s, s.device, "org.bluez.Device1", "Disconnect", nullptr, nullptr); ReleaseDevice(s); }
   } else if (j.method == "connect") {
     auto id = Arg(j, "id");
     g_autoptr(GVariant) obj = g_variant_lookup_value(objects, id.c_str(), G_VARIANT_TYPE("a{sa{sv}}"));
     if (!obj || id.rfind(s.adapter + "/dev_", 0) != 0) g_set_error_literal(&j.error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT, "Device not discovered");
-    else { s.device = id; g_autoptr(GVariant) r = Call(s, id, "org.bluez.Device1", "Connect", nullptr, &j.error); }
+    else {
+      bool leased = false;
+      {
+        std::lock_guard<std::mutex> guard(s.leases->mutex);
+        auto owner = s.leases->owners.find(id);
+        leased = owner == s.leases->owners.end() || owner->second == &s;
+        if (leased) s.leases->owners[id] = &s;
+      }
+      if (!leased) g_set_error_literal(&j.error, G_IO_ERROR, G_IO_ERROR_BUSY, "Device already owned by another client session");
+      else {
+        s.device = id;
+        g_autoptr(GVariant) r = Call(s, id, "org.bluez.Device1", "Connect", nullptr, &j.error);
+        if (!r) ReleaseDevice(s);
+      }
+    }
   } else if (j.method == "disconnect") {
     if (!s.device.empty()) { g_autoptr(GVariant) r = Call(s, s.device, "org.bluez.Device1", "Disconnect", nullptr, &j.error); }
-    s.device.clear(); s.fields.clear();
+    ReleaseDevice(s);
   } else if (j.method == "maximumWriteBytes") { j.value = fl_value_new_int(20); }
   else if (j.method == "discover") {
     // BlueZ Connect completes before ServicesResolved; wait off the UI thread.
@@ -260,24 +307,52 @@ static void Complete(GObject*, GAsyncResult* result, gpointer) {
     g_autofree gchar* remote = g_dbus_error_get_remote_error(j->error);
     const auto message = std::string(remote ? remote : "");
     const char* code = message.find("NotAuthorized") != std::string::npos || message.find("AccessDenied") != std::string::npos ? "permission_denied" :
-      g_error_matches(j->error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT) ? "timeout" : "ble_error";
+      g_error_matches(j->error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT) ? "timeout" :
+      g_error_matches(j->error, G_IO_ERROR, G_IO_ERROR_BUSY) ? "busy" : "ble_error";
     fl_method_call_respond_error(j->call, code, j->error->message, nullptr, nullptr);
   } else fl_method_call_respond_success(j->call, j->value, nullptr);
+  if (j->method == "dispose" && s->isolated) {
+    // Break the channel-handler ownership cycle after completing the reply.
+    if (s->channel) fl_method_channel_set_method_call_handler(s->channel, nullptr, nullptr, nullptr);
+    fl_event_channel_set_stream_handlers(s->events, nullptr, nullptr, nullptr, nullptr);
+    if (s->bus) g_dbus_connection_close_sync(s->bus, nullptr, nullptr);
+  }
 }
 }
-void register_ble_central(FlBinaryMessenger* messenger) {
+static State register_session(FlBinaryMessenger* messenger, const std::string& session, std::shared_ptr<Leases> leases) {
   auto state = std::make_shared<Central>();
   g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
-  state->events = fl_event_channel_new(messenger, "universal_ble_server/client/events", FL_METHOD_CODEC(codec));
+  state->isolated = !session.empty();
+  state->leases = leases;
+  state->messenger = messenger;
+  const auto prefix = std::string("universal_ble_server/client/") + (session.empty() ? "" : session + "/");
+  state->events = fl_event_channel_new(messenger, (prefix + "events").c_str(), FL_METHOD_CODEC(codec));
   auto weak = new std::weak_ptr<Central>(state);
   fl_event_channel_set_stream_handlers(state->events,
     [](FlEventChannel*, FlValue*, gpointer p) -> FlMethodErrorResponse* { if (auto s = static_cast<std::weak_ptr<Central>*>(p)->lock()) s->listening = true; return nullptr; },
     [](FlEventChannel*, FlValue*, gpointer p) -> FlMethodErrorResponse* { if (auto s = static_cast<std::weak_ptr<Central>*>(p)->lock()) s->listening = false; return nullptr; },
     weak, [](gpointer p) { delete static_cast<std::weak_ptr<Central>*>(p); });
-  g_autoptr(FlMethodChannel) channel = fl_method_channel_new(messenger, "universal_ble_server/client/methods", FL_METHOD_CODEC(codec));
+  g_autoptr(FlMethodChannel) channel = fl_method_channel_new(messenger, (prefix + "methods").c_str(), FL_METHOD_CODEC(codec));
+  state->channel = channel;
+  g_object_add_weak_pointer(G_OBJECT(channel), reinterpret_cast<gpointer*>(&state->channel));
   fl_method_channel_set_method_call_handler(channel, [](FlMethodChannel*, FlMethodCall* call, gpointer data) {
     auto state = *static_cast<State*>(data); auto args = fl_method_call_get_args(call);
     const std::string method = fl_method_call_get_name(call);
+    if (method == "createClient" && !state->isolated) {
+      for (auto it = state->sessions.begin(); it != state->sessions.end();) {
+        if (it->second.expired()) it = state->sessions.erase(it); else ++it;
+      }
+      auto value = args ? fl_value_lookup_string(args, "session") : nullptr;
+      std::string id = value && fl_value_get_type(value) == FL_VALUE_TYPE_STRING ? fl_value_get_string(value) : "";
+      if (id.empty() || id.size() > 64 || id.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != std::string::npos) {
+        fl_method_call_respond_error(call, "invalid_data", "Invalid client session", nullptr, nullptr); return;
+      }
+      if (state->sessions.count(id) || state->sessions.size() >= 16) {
+        fl_method_call_respond_error(call, "busy", "Client session exists or 16-session limit reached", nullptr, nullptr); return;
+      }
+      state->sessions[id] = register_session(state->messenger, id, state->leases);
+      fl_method_call_respond_success(call, nullptr, nullptr); return;
+    }
     const bool cancel = method == "disconnect" || method == "dispose";
     if (state->jobs > 0 && !cancel) { fl_method_call_respond_error(call, "busy", "Native operation pending", nullptr, nullptr); return; }
     if (state->jobs >= 2) { fl_method_call_respond_error(call, "busy", "Cancellation pending", nullptr, nullptr); return; }
@@ -288,4 +363,8 @@ void register_ble_central(FlBinaryMessenger* messenger) {
     g_autoptr(GTask) task = g_task_new(nullptr, nullptr, Complete, nullptr);
     g_task_set_task_data(task, job, [](gpointer p) { delete static_cast<Job*>(p); }); g_task_run_in_thread(task, Work);
   }, new State(state), [](gpointer p) { delete static_cast<State*>(p); });
+  return state;
+}
+void register_ble_central(FlBinaryMessenger* messenger) {
+  register_session(messenger, "", std::make_shared<Leases>());
 }

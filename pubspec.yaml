@@ -1,6 +1,6 @@
 name: universal_ble_server
-description: Native BLE clients and servers with shared typed fields, framed messages, optional sessions, request/reply, reconnection and shared state.
-version: 0.1.0
+description: BLE clients and servers with typed fields, framed messages and optional sessions. Native platform APIs, Web Bluetooth clients and Linux multi-device support.
+version: 0.2.0
 repository: https://github.com/arlamend7/flutter_universal_ble_server
 issue_tracker: https://github.com/arlamend7/flutter_universal_ble_server/issues
 topics:

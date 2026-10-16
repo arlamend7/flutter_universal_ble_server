@@ -60,6 +60,16 @@ extension UniversalBleServerConvenience on UniversalBleServer {
 
 /// Typed fields and finite discovery on the same connection as complete messages.
 extension BleMessageClientConvenience on BleMessageClient {
+  /// Opens the web device chooser for this message service, directly from a user
+  /// gesture. Extra custom-field service UUIDs must be granted at selection time.
+  /// Returns null on cancellation; native apps should continue using [discover].
+  Future<BleDiscoveredServer?> selectDevice({
+    List<String> optionalServiceUuids = const [],
+  }) => client.selectDevice(
+    serviceUuids: [configuration.serviceUuid],
+    optionalServiceUuids: optionalServiceUuids,
+  );
+
   /// Scans for this message protocol and returns one latest result per device.
   /// No device is connected automatically. The scan stops after [duration].
   /// Set [requestPermissions] to false to manage permission prompts separately.

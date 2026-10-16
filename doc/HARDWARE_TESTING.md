@@ -158,15 +158,17 @@ and results. Use a BLE inspector or your own central implementing the same UUIDs
 | macOS | Debug example build passed locally | Not yet tested | Pending |
 | Windows | CI debug build passed for d537b80 | Not yet tested | Pending |
 
-Web and Linux intentionally report unsupported peripheral capability.
+Flutter Web intentionally reports unsupported peripheral capability. The new
+[Linux server](LINUX.md) requires Linux build and physical acceptance validation.
 
 ## Native clients and optional sessions
 
 Run the combined client/server example on one host and two separate clients.
 Test each Android, iOS, macOS, Windows and Linux client against a supported server.
 Windows/Linux client compilation must pass before conducting acceptance tests.
-The Linux role is client only. Flutter Web uses the separate HTML client and
-cannot run the native client/session demo.
+Linux supports hosting and independent client connections to multiple peripherals.
+Flutter Web supports the client role through Web Bluetooth; follow [WEB.md](WEB.md)
+for browser requirements and manual acceptance steps.
 
 1. Scan by service UUID, choose a device, connect and wait for message readiness.
    Verify the logical server name even when the advertised name is absent.

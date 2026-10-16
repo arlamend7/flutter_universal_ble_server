@@ -29,7 +29,10 @@ jobs:
       - run: node --test test/browser_client_test.cjs
       - run: flutter test --coverage
       - run: flutter test --platform chrome test/web
+      - run: flutter test --platform chrome --wasm test/web
       - run: flutter build web
+        working-directory: example
+      - run: flutter build web --wasm
         working-directory: example
   minimum-sdk:
     runs-on: ubuntu-latest
@@ -43,6 +46,7 @@ jobs:
       - run: flutter pub downgrade
       - run: flutter analyze
       - run: flutter test
+      - run: flutter test --platform chrome test/web
   native:
     strategy:
       fail-fast: false
@@ -68,7 +72,10 @@ jobs:
           java-version: '17'
       - name: Linux build dependencies
         if: matrix.target == 'linux --debug'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev libglib2.0-dev dbus pkg-config
+      - name: Native BlueZ protocol tests
+        if: matrix.target == 'linux --debug'
+        run: test/linux/run_tests.sh
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

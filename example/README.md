@@ -15,9 +15,21 @@ The host can send to everyone or one selected client. Client messages can be
 forwarded to the other clients using the host's relay switch. **Stop / reset**
 releases resources. The implementation is in [chat_demo.dart](lib/chat_demo.dart).
 
+To join from Flutter Web, run `flutter run -d chrome`, open **Simple chat**, and
+press **Choose BLE device**, then **Connect**. Host on a native device running the
+same chat screen. The browser must support Web Bluetooth on HTTPS or localhost.
+Web hosting is disabled. See [the web guide](../doc/WEB.md).
+
 The scan is finite, handles permission requests and returns an empty list when no
 host is found. Names may be absent in advertisements; the full logical name is
 read after connecting. Errors are shown in the log. Keep the apps in foreground.
+
+## Linux / Raspberry Pi hub
+
+On a compatible Linux Flutter runner, **Simple chat** can host through BlueZ.
+**Linux hub: connect to multiple hosts** connects independently to other devices
+running Simple chat hosts. It includes per-host send, send-to-all and independent
+disconnect controls. See [Linux requirements and tests](../doc/LINUX.md).
 
 ## Fields, requests and sessions
 
@@ -46,8 +58,9 @@ whereas the shared-counter screen uses session/RPC envelopes.
 
 For setup, API examples and limitations see [the guide](../doc/CLIENT_SERVER.md).
 Windows/Linux builds and physical radio acceptance remain separate validation.
-Flutter Web does not implement the native client; use the standalone HTML client
-in a compatible browser to test the original message-server screen.
+The shared-counter screen retains its native discovery UI; use Simple chat for
+Flutter Web. The standalone HTML client still pairs with the original
+message-server screen and uses a different protocol from Simple chat.
 
 ## Apple dependency managers
 

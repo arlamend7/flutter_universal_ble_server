@@ -1,9 +1,23 @@
 # universal_ble_server
 
-Native Bluetooth Low Energy clients and servers with a small Dart API.
+Bluetooth Low Energy clients and servers with a small Dart API.
 Host a named server, discover it from another device, and exchange text, bytes or
 JSON. Add typed fields or admitted sessions only when your application needs them.
 No third-party BLE plugin or state-management framework is required.
+Flutter Web clients connect through Web Bluetooth in supported browsers.
+
+## New in 0.2.0
+
+- Connect from Flutter Web using `selectDevice()` and the existing messaging API.
+- Host a BLE server on Linux through native BlueZ, including named advertising,
+  authorized reads/writes, private replies and broadcasts.
+- Connect a Linux host to multiple peripherals with one client instance per
+  device. The new hub example demonstrates independent sends and disconnects.
+
+Existing messaging and field APIs remain compatible. This package supports BLE;
+Bluetooth Classic is outside its scope. Linux/Pi hardware validation is pending,
+and a macOS native-test cleanup warning remains unresolved. See the
+[0.2.0 changelog](CHANGELOG.md#020) and [validation record](doc/VALIDATION.md).
 
 ## Quick start
 
@@ -54,6 +68,21 @@ await errors.cancel();
 await client.dispose(); // On the host, dispose server instead.
 ```
 
+On **Flutter Web**, replace discovery with a browser chooser, called directly
+from a button callback:
+
+```dart
+final device = await client.selectDevice();
+if (device != null) {
+  await client.connect(device.id);
+  await client.sendText('Hello from the browser!');
+}
+```
+
+The messaging API is unchanged. Web requires HTTPS or localhost and a compatible
+browser; BLE hosting remains native. See the [web guide](doc/WEB.md) for custom
+service permissions, browser limits and a runnable example.
+
 Run the complete [example](https://github.com/arlamend7/flutter_universal_ble_server/blob/main/example/README.md) on two physical devices and choose
 **Simple chat**. It includes discovery/selection, name configuration, error UI,
 one-to-one sends, broadcasts, optional forwarding, and cleanup.
@@ -71,6 +100,7 @@ one-to-one sends, broadcasts, optional forwarding, and cleanup.
 | Store and observe configuration values | Shared `BleFieldDefinition<T>` and typed field methods |
 | Application requests, identity, retries, shared state | Optional `BleSessionServer` / `BleSessionClient` |
 | Implement an external device's custom GATT protocol | `UniversalBleClient` / `UniversalBleServer` |
+| Connect a Linux hub to multiple peripherals | One `BleMessageClient` or `UniversalBleClient` per device |
 | Pure Dart protocol tools/custom transports | `package:universal_ble_server/ble_protocol.dart` |
 
 A message server and client also expose typed field operations directly through
@@ -91,15 +121,16 @@ remote requests; a host does not need to connect to itself.
 
 ## Install and configure
 
-This source includes unreleased changes. To try the current implementation, use
-a local path dependency (or a Git dependency pinned to a commit containing these
-changes). Do not assume an older published version exposes this API.
+Requires Dart 3.8.1 or newer and Flutter 3.32.0 or newer. For version 0.2.0:
 
 ```yaml
 dependencies:
-  universal_ble_server:
-    path: ../flutter_universal_ble_server
+  universal_ble_server: ^0.2.0
 ```
+
+Until 0.2.0 is published, use a local path dependency or a Git dependency pinned
+to a commit containing these changes. The bundled example uses a local path.
+When upgrading from 0.1.x, explicitly update the constraint to `^0.2.0`.
 
 - **Android:** permissions are declared by the plugin; request consent through
   `startWithPermissions()` / `discover()` or the explicit permission APIs.
@@ -117,14 +148,18 @@ necessary; Flutter does not make every adapter support every BLE role.
 | --- | --- | --- | --- |
 | Android | Native GATT server/advertiser | Native BluetoothGatt | Local example build; hardware tests pending |
 | iOS/macOS | Native CoreBluetooth | Native CoreBluetooth | Local example builds; hardware tests pending |
-| Windows | Native WinRT | Native WinRT | Windows compilation and hardware tests pending |
-| Linux | Unsupported | Native BlueZ D-Bus/GIO | Linux compilation and hardware tests pending |
-| Flutter Web | Unsupported | Unsupported | Fails explicitly; separate HTML client available |
+| Windows | Native WinRT | Native WinRT | Earlier CI example build passed; hardware tests pending |
+| Linux | Native BlueZ GATT/advertiser | Independent BlueZ clients | Native D-Bus tests; Linux build and hardware validation pending |
+| Flutter Web | Unsupported | Direct Web Bluetooth | Chrome tests with simulated GATT; physical tests pending |
 
 API compatibility with a platform is not a physical BLE certification. Native
-adapters currently own one server and one remote client connection per Flutter
+adapters own one server per Flutter engine. Linux supports multiple independently
+owned client instances; other native backends retain one remote connection per
 engine; construct ordinary instances and dispose them. No application singleton
 is required. Inject a transport/platform for tests or custom integrations.
+
+See [Linux/Raspberry Pi hosting and multiple peripherals](doc/LINUX.md) for
+requirements, examples and backend-specific limits.
 
 ## Defaults and delivery semantics
 
@@ -142,9 +177,11 @@ is required. Inject a transport/platform for tests or custom integrations.
 
 ## Guides
 
-Guide sources are included in `doc/` and `example/`. Hosted links refer to the
-repository and become available there when these unreleased changes are pushed.
+Guide sources are included in `doc/` and `example/`; repository links follow the
+main branch and may describe changes newer than an installed release.
 
+- [Flutter Web setup and browser limitations](doc/WEB.md)
+- [Linux/Raspberry Pi hosting and multiple peripherals](doc/LINUX.md)
 - [Detailed server setup, permissions and migration](https://github.com/arlamend7/flutter_universal_ble_server/blob/main/doc/SERVER.md)
 - [Full client/server API and sessions](https://github.com/arlamend7/flutter_universal_ble_server/blob/main/doc/CLIENT_SERVER.md)
 - [Use-case recipes and lifecycle ownership](https://github.com/arlamend7/flutter_universal_ble_server/blob/main/doc/RECIPES.md)
