@@ -63,9 +63,19 @@ inline FlMethodCall* Call(const char* method, FlValue* args = nullptr) {
   g_object_set_data_full(object, "args", fl_value_ref(args), [](gpointer p) { fl_value_unref(static_cast<FlValue*>(p)); }); return object;
 }
 inline void Clear() {
-  for (auto& c : channels) { g_object_set_data(c.second, "handler", nullptr); g_object_set_data(c.second, "stream", nullptr); }
-  for (auto& c : channels) g_object_unref(c.second); channels.clear();
-  for (auto* e : events) fl_value_unref(e); events.clear(); dart_request = {};
+  for (auto& c : channels) {
+    g_object_set_data(c.second, "handler", nullptr);
+    g_object_set_data(c.second, "stream", nullptr);
+  }
+  for (auto& c : channels) {
+    g_object_unref(c.second);
+  }
+  channels.clear();
+  for (auto* e : events) {
+    fl_value_unref(e);
+  }
+  events.clear();
+  dart_request = {};
 }
 }
 inline FlStandardMethodCodec* fl_standard_method_codec_new() { return fake_flutter::Object(); }
